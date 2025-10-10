@@ -24,7 +24,7 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
   const formatContent = () => {
     if (typeof content === "string") {
       return (
-        <div className="prose prose-sm max-w-none dark:prose-invert">
+        <div className="prose prose-sm max-w-none prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
           <ReactMarkdown
             remarkPlugins={[remarkMath]}
             rehypePlugins={[rehypeKatex]}
@@ -41,7 +41,7 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
                     {String(children).replace(/\n$/, "")}
                   </SyntaxHighlighter>
                 ) : (
-                  <code className={className} {...props}>
+                  <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
                     {children}
                   </code>
                 );
@@ -60,7 +60,7 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
         {content.map((part, index) => {
           if (part.type === "text" && part.text) {
             return (
-              <div key={index} className="prose prose-sm max-w-none dark:prose-invert">
+              <div key={index} className="prose prose-sm max-w-none prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeKatex]}
@@ -76,7 +76,7 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
                           {String(children).replace(/\n$/, "")}
                         </SyntaxHighlighter>
                       ) : (
-                        <code className={className} {...props}>
+                        <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
                           {children}
                         </code>
                       );
