@@ -1,5 +1,10 @@
 import { cn } from "@/lib/utils";
 import { Bot, User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface MessageContent {
   type: "text" | "image_url";
@@ -19,9 +24,31 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
     if (typeof content === "string") {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+            components={{
+              code({ node, inline, className, children, ...props }: any) {
+                const match = /language-(\w+)/.exec(className || "");
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    style={oneDark}
+                    language={match[1]}
+                    PreTag="div"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, "")}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
             {content}
-          </p>
+          </ReactMarkdown>
         </div>
       );
     }
@@ -33,9 +60,30 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
           if (part.type === "text" && part.text) {
             return (
               <div key={index} className="prose prose-sm max-w-none dark:prose-invert">
-                <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    code({ node, inline, className, children, ...props }: any) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={oneDark}
+                          PreTag="div"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, "")}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
                   {part.text}
-                </p>
+                </ReactMarkdown>
               </div>
             );
           }
