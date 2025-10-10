@@ -144,7 +144,7 @@ const Index = () => {
     try {
       // Préparer le prompt pour Supabase
       const promptText = imageBase64
-        ? `${content}\n[Image: ${imageBase64}]`
+        ? `${content} [Image: ${imageBase64}]`
         : content;
 
       // Insérer la requête dans la table requests
@@ -152,7 +152,8 @@ const Index = () => {
         .from("requests")
         .insert([
           {
-            imput_message: { text: promptText },
+            prompt: promptText,
+            imput_message: { text: content },
             status: "pending",
           },
         ])
