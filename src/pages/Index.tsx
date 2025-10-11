@@ -94,7 +94,7 @@ const Index = () => {
     saveConversations(updated);
   };
 
-  const handleSendMessage = async (content: string, imageBase64?: string) => {
+  const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean) => {
     if (!currentConversationId) return;
 
     let userMessage: Message;
@@ -142,7 +142,45 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Préparer le prompt pour Supabase
+      // Mode recherche web: appeler directement le serveur Python local
+      if (useWebSearch) {
+        const response = await fetch("http://localhost:5000/api/message", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            session_id: currentConversationId,
+            message: content,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur serveur de recherche: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: data.reply || "Aucune réponse reçue",
+          timestamp: Date.now(),
+        };
+
+        updateConversation(currentConversationId, {
+          messages: [...updatedMessages, assistantMessage],
+        });
+
+        toast({
+          title: "Recherche web effectuée",
+          description: `${data.search?.count || 0} résultats trouvés`,
+        });
+
+        setIsLoading(false);
+        return;
+      }
+
+      // Mode normal: utiliser Supabase
       const promptText = imageBase64
         ? `${content} [Image: ${imageBase64}]`
         : content;

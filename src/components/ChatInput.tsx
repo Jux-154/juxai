@@ -1,11 +1,11 @@
 import { useState, FormEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X } from "lucide-react";
+import { Send, Loader2, Image, X, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
-  onSend: (message: string, imageBase64?: string) => void;
+  onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
   isLoading: boolean;
 }
 
@@ -13,12 +13,13 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [useWebSearch, setUseWebSearch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if ((input.trim() || imageBase64) && !isLoading) {
-      onSend(input.trim(), imageBase64 || undefined);
+      onSend(input.trim(), imageBase64 || undefined, useWebSearch);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
@@ -117,6 +118,22 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
           title="Téléverser une image"
         >
           <Image className="h-5 w-5" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant={useWebSearch ? "default" : "outline"}
+          className={cn(
+            "shrink-0 transition-all h-11 w-11 md:h-12 md:w-12",
+            useWebSearch 
+              ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
+              : "bg-card border-border hover:bg-accent hover:border-primary"
+          )}
+          onClick={() => setUseWebSearch(!useWebSearch)}
+          disabled={isLoading}
+          title={useWebSearch ? "Mode recherche web activé" : "Activer la recherche web"}
+        >
+          <Globe className="h-5 w-5" />
         </Button>
         <Textarea
           value={input}
