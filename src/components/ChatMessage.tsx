@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Bot, User, Volume2, StopCircle } from "lucide-react";
+import { Bot, User, Volume2, StopCircle, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -32,6 +32,7 @@ interface ChatMessageProps {
 export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) => {
   const isUser = role === "user";
   const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
 
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -101,6 +102,24 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       }
     } else {
       alert('La synthèse vocale n\'est pas supportée par votre navigateur.');
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
     }
   };
 
@@ -235,6 +254,20 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
                 <Volume2 className="h-4 w-4 mr-1" />
               )}
               {isSpeaking ? "Arrêter" : "Écouter"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => copyToClipboard(getTextContent())}
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              title="Copier la réponse"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 mr-1" />
+              ) : (
+                <Copy className="h-4 w-4 mr-1" />
+              )}
+              {copied ? "Copié" : "Copier"}
             </Button>
             {searchResults && searchResults.length > 0 && (
               <SourcesButton sources={searchResults} />
