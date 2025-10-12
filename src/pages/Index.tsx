@@ -284,7 +284,7 @@ const Index = () => {
   return (
     <div className="flex h-screen bg-background relative">
       <MobileSidebarToggle onClick={toggleSidebar} />
-      
+
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -294,7 +294,7 @@ const Index = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`w-64 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 md:relative md:translate-x-0 fixed top-0 left-0 h-screen z-[1000] ${
+      <div className={`w-64 sm:w-72 md:w-80 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 md:relative md:translate-x-0 fixed top-0 left-0 h-screen z-[1000] ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
         <div className="p-4 border-b border-sidebar-border">
@@ -348,7 +348,7 @@ const Index = () => {
                   {currentMessages.map((message) => (
                     <div
                       key={message.id}
-                      className={`px-6 py-6 ${
+                      className={`px-3 sm:px-6 py-4 sm:py-6 ${
                         message.role === "user" ? "bg-background" : "bg-card"
                       }`}
                     >
@@ -361,7 +361,7 @@ const Index = () => {
                     </div>
                   ))}
                   {isLoading && (
-                    <div className="px-6 py-6 bg-card">
+                    <div className="px-3 sm:px-6 py-4 sm:py-6 bg-card">
                       <div className="max-w-4xl mx-auto flex gap-4">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-secondary flex items-center justify-center flex-shrink-0">
                           <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
@@ -378,7 +378,7 @@ const Index = () => {
 
         {/* Input Area */}
         <div className="border-t border-border bg-background">
-          <div className="px-4 py-5 max-w-4xl mx-auto">
+          <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
             <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
           </div>
         </div>

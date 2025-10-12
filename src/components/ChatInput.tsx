@@ -112,35 +112,35 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
           type="button"
           size="icon"
           variant="outline"
-          className="shrink-0 bg-card border-border hover:bg-accent hover:border-primary transition-all h-11 w-11 md:h-12 md:w-12"
+          className="shrink-0 bg-card border-border hover:bg-accent hover:border-primary transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
           title="Téléverser une image"
         >
-          <Image className="h-5 w-5" />
+          <Image className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
         <Button
           type="button"
           size="icon"
           variant={useWebSearch ? "default" : "outline"}
           className={cn(
-            "shrink-0 transition-all h-11 w-11 md:h-12 md:w-12",
-            useWebSearch 
-              ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]" 
+            "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
+            useWebSearch
+              ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
               : "bg-card border-border hover:bg-accent hover:border-primary"
           )}
           onClick={() => setUseWebSearch(!useWebSearch)}
           disabled={isLoading}
           title={useWebSearch ? "Mode recherche web activé" : "Activer la recherche web"}
         >
-          <Globe className="h-5 w-5" />
+          <Globe className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Envoyez un message..."
           className={cn(
-            "min-h-[60px] max-h-[200px] resize-none transition-all",
+            "min-h-[50px] sm:min-h-[60px] max-h-[200px] resize-none transition-all text-sm sm:text-base",
             "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
             "focus-visible:ring-0"
           )}
@@ -157,14 +157,14 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
           size="icon"
           disabled={(!input.trim() && !imageBase64) || isLoading}
           className={cn(
-            "shrink-0 transition-all min-w-[50px] md:min-w-[60px] h-11 w-11 md:h-12 md:w-12",
+            "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
             "bg-primary text-background hover:bg-primary/90 hover:scale-105"
           )}
         >
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
           ) : (
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4 sm:h-5 sm:w-5" />
           )}
         </Button>
       </div>
