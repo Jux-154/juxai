@@ -1,8 +1,14 @@
 import { useState, FormEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, Globe } from "lucide-react";
+import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ChatInputProps {
   onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
@@ -14,7 +20,10 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
+  const [mode, setMode] = useState<"none" | "image" | "web">("none");
+  const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -23,6 +32,8 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
+      setMode("none");
+      setUseWebSearch(false);
     }
   };
 
@@ -78,6 +89,47 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
     setImageBase64(null);
   };
 
+  const startVoiceRecording = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('La reconnaissance vocale n\'est pas supportée par votre navigateur.');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'fr-FR'; // French language
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => prev + (prev ? ' ' : '') + transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Erreur de reconnaissance vocale:', event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="relative">
       <div className="relative flex items-end gap-2">
@@ -108,50 +160,81 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
           className="hidden"
           onChange={handleImageUpload}
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
-          className="shrink-0 bg-card border-border hover:bg-accent hover:border-primary transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-          title="Téléverser une image"
-        >
-          <Image className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant={useWebSearch ? "default" : "outline"}
-          className={cn(
-            "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-            useWebSearch
-              ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
-              : "bg-card border-border hover:bg-accent hover:border-primary"
-          )}
-          onClick={() => setUseWebSearch(!useWebSearch)}
-          disabled={isLoading}
-          title={useWebSearch ? "Mode recherche web activé" : "Activer la recherche web"}
-        >
-          <Globe className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Envoyez un message..."
-          className={cn(
-            "min-h-[50px] sm:min-h-[60px] max-h-[200px] resize-none transition-all text-sm sm:text-base",
-            "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
-            "focus-visible:ring-0"
-          )}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-          disabled={isLoading}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant={mode !== "none" ? "default" : "outline"}
+              className={cn(
+                "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
+                mode !== "none"
+                  ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
+                  : "bg-card border-border hover:bg-accent hover:border-primary"
+              )}
+              disabled={isLoading}
+              title="Options de message"
+            >
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem
+              onClick={() => {
+                fileInputRef.current?.click();
+                setMode("image");
+              }}
+              className="flex items-center gap-2"
+            >
+              <Image className="h-4 w-4" />
+              Ajouter une image
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setUseWebSearch(!useWebSearch);
+                setMode(useWebSearch ? "none" : "web");
+              }}
+              className="flex items-center gap-2"
+            >
+              <Globe className="h-4 w-4" />
+              {useWebSearch ? "Désactiver" : "Activer"} recherche web
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="relative flex-1">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Envoyez un message..."
+            className={cn(
+              "min-h-[50px] sm:min-h-[60px] max-h-[200px] resize-none transition-all text-sm sm:text-base pr-10",
+              "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
+              "focus-visible:ring-0"
+            )}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+            disabled={isLoading}
+            title={isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement vocal"}
+          >
+            {isRecording ? (
+              <MicOff className="h-4 w-4 text-red-500" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
         <Button
           type="submit"
           size="icon"

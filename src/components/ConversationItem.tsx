@@ -40,6 +40,7 @@ interface ConversationItemProps {
   onClick: () => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
+  isMobile?: boolean;
 }
 
 export const ConversationItem = ({
@@ -49,6 +50,7 @@ export const ConversationItem = ({
   onClick,
   onRename,
   onDelete,
+  isMobile = false,
 }: ConversationItemProps) => {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -96,7 +98,7 @@ export const ConversationItem = ({
       <div className="truncate flex-1">{title}</div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-opacity">
+          <button className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} p-1 hover:bg-accent rounded transition-opacity`}>
             <MoreVertical className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>

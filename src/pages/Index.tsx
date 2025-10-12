@@ -5,7 +5,7 @@ import { ConversationItem } from "@/components/ConversationItem";
 import { MobileSidebarToggle } from "@/components/MobileSidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
-import { ApiStatus } from "@/components/ApiStatus";
+
 import { DownloadModal } from "@/components/DownloadModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -49,10 +49,40 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWebView, setIsWebView] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Detect if running in WebView
+    const detectWebView = () => {
+      const ua = navigator.userAgent.toLowerCase();
+      return ua.includes('wv') ||
+             (window.navigator as any).standalone ||
+             !!(window as any).webkit?.messageHandlers;
+    };
+    setIsWebView(detectWebView());
+
     loadConversations();
+
+    // Request fullscreen on page load
+    const requestFullscreen = async () => {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement as any).webkitRequestFullscreen) {
+          await (document.documentElement as any).webkitRequestFullscreen();
+        } else if ((document.documentElement as any).mozRequestFullScreen) {
+          await (document.documentElement as any).mozRequestFullScreen();
+        } else if ((document.documentElement as any).msRequestFullscreen) {
+          await (document.documentElement as any).msRequestFullscreen();
+        }
+      } catch (error) {
+        console.log("Fullscreen request failed:", error);
+      }
+    };
+
+    // Small delay to ensure DOM is ready
+    setTimeout(requestFullscreen, 100);
   }, []);
 
   const loadConversations = () => {
@@ -283,7 +313,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background relative overflow-hidden">
-      <MobileSidebarToggle onClick={toggleSidebar} />
+      <MobileSidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
@@ -320,6 +350,7 @@ const Index = () => {
                 }}
                 onRename={handleRenameConversation}
                 onDelete={handleDeleteConversation}
+                isMobile={true}
               />
             ))}
           </div>
@@ -340,7 +371,7 @@ const Index = () => {
                   <p className="text-muted-foreground max-w-md mb-4">
                     Démarrez une conversation avec le modèle Qwen
                   </p>
-                  <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />
+                  {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
                   <VersionCard />
                 </div>
               ) : (
@@ -384,8 +415,8 @@ const Index = () => {
         </div>
       </div>
 
-      <ApiStatus />
-      <DownloadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {!isWebView && <DownloadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />}
     </div>
   );
 };
