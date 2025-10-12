@@ -42,9 +42,56 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       } else {
         // Start speaking
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'fr-FR'; // French language
-        utterance.rate = 0.9; // Slightly slower for better comprehension
-        utterance.pitch = 1;
+
+        // Get available voices
+        const voices = window.speechSynthesis.getVoices();
+
+        // Try to find the best French voice available
+        let bestVoice = null;
+
+        // Priority 1: High-quality French voices
+        bestVoice = voices.find(voice =>
+          voice.lang.startsWith('fr') &&
+          (voice.name.toLowerCase().includes('alice') ||
+           voice.name.toLowerCase().includes('amelie') ||
+           voice.name.toLowerCase().includes('audrey') ||
+           voice.name.toLowerCase().includes('aurore') ||
+           voice.name.toLowerCase().includes('claire') ||
+           voice.name.toLowerCase().includes('marie') ||
+           voice.name.toLowerCase().includes('sophie') ||
+           voice.name.toLowerCase().includes('virginie'))
+        );
+
+        // Priority 2: Any female French voice
+        if (!bestVoice) {
+          bestVoice = voices.find(voice =>
+            voice.lang.startsWith('fr') &&
+            (voice.name.toLowerCase().includes('female') ||
+             voice.name.toLowerCase().includes('femme') ||
+             voice.name.toLowerCase().includes('woman'))
+          );
+        }
+
+        // Priority 3: Any French voice
+        if (!bestVoice) {
+          bestVoice = voices.find(voice => voice.lang.startsWith('fr'));
+        }
+
+        // Priority 4: French Canadian voices
+        if (!bestVoice) {
+          bestVoice = voices.find(voice => voice.lang === 'fr-CA');
+        }
+
+        if (bestVoice) {
+          utterance.voice = bestVoice;
+        } else {
+          utterance.lang = 'fr-FR'; // Fallback
+        }
+
+        // Optimized settings for natural French speech
+        utterance.rate = 0.8; // Slower for better comprehension
+        utterance.pitch = 1.15; // Higher pitch for more natural female voice
+        utterance.volume = 1.0; // Full volume for clarity
 
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
