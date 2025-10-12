@@ -47,6 +47,11 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
       return;
     }
 
+    // If web search is enabled, disable it when uploading image
+    if (useWebSearch) {
+      setUseWebSearch(false);
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new window.Image();
@@ -74,6 +79,7 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
           const base64Image = canvas.toDataURL(file.type);
           setImageBase64(base64Image);
           setImagePreview(base64Image);
+          setMode("image");
         }
       };
       img.src = event.target?.result as string;
@@ -166,10 +172,10 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
             <Button
               type="button"
               size="icon"
-              variant={mode !== "none" ? "default" : "outline"}
+              variant={(imageBase64 || useWebSearch) ? "default" : "outline"}
               className={cn(
                 "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-                mode !== "none"
+                (imageBase64 || useWebSearch)
                   ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                   : "bg-card border-border hover:bg-accent hover:border-primary"
               )}
@@ -185,17 +191,24 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
                 fileInputRef.current?.click();
                 setMode("image");
               }}
-              className="flex items-center gap-2"
+              className={cn("flex items-center gap-2", useWebSearch && "opacity-50 cursor-not-allowed")}
+              disabled={useWebSearch}
             >
               <Image className="h-4 w-4" />
               Ajouter une image
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
+                // If image is uploaded, disable it when enabling web search
+                if (imageBase64) {
+                  setImagePreview(null);
+                  setImageBase64(null);
+                }
                 setUseWebSearch(!useWebSearch);
                 setMode(useWebSearch ? "none" : "web");
               }}
-              className="flex items-center gap-2"
+              className={cn("flex items-center gap-2", imageBase64 && "opacity-50 cursor-not-allowed")}
+              disabled={!!imageBase64}
             >
               <Globe className="h-4 w-4" />
               {useWebSearch ? "Désactiver" : "Activer"} recherche web
