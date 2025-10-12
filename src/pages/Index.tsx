@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
+import { ConversationItem } from "@/components/ConversationItem";
 import { MobileSidebarToggle } from "@/components/MobileSidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
@@ -101,6 +102,32 @@ const Index = () => {
       c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c
     );
     saveConversations(updated);
+  };
+
+  const handleRenameConversation = (id: string, newTitle: string) => {
+    updateConversation(id, { title: newTitle });
+    toast({
+      title: "Conversation renommée",
+      description: `Le titre a été changé en "${newTitle}"`,
+    });
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    const filtered = conversations.filter((c) => c.id !== id);
+    saveConversations(filtered);
+    
+    if (id === currentConversationId) {
+      if (filtered.length > 0) {
+        setCurrentConversationId(filtered[0].id);
+      } else {
+        createNewChat();
+      }
+    }
+    
+    toast({
+      title: "Conversation supprimée",
+      description: "La conversation a été supprimée avec succès",
+    });
   };
 
   const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean) => {
@@ -280,20 +307,18 @@ const Index = () => {
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
             {conversations.map((conv) => (
-              <button
+              <ConversationItem
                 key={conv.id}
+                id={conv.id}
+                title={conv.title}
+                isActive={conv.id === currentConversationId}
                 onClick={() => {
                   setCurrentConversationId(conv.id);
                   closeSidebar();
                 }}
-                className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex items-center gap-2 ${
-                  conv.id === currentConversationId
-                    ? "bg-accent text-accent-foreground border-l-2 border-primary"
-                    : "hover:bg-accent/50"
-                }`}
-              >
-                <div className="truncate flex-1">{conv.title}</div>
-              </button>
+                onRename={handleRenameConversation}
+                onDelete={handleDeleteConversation}
+              />
             ))}
           </div>
         </ScrollArea>
