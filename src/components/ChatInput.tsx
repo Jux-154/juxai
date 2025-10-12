@@ -1,6 +1,6 @@
 import { useState, FormEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -13,9 +13,10 @@ import {
 interface ChatInputProps {
   onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
   isLoading: boolean;
+  isWebView?: boolean;
 }
 
-export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
+export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -132,7 +133,7 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      <div className="relative flex items-end gap-2">
+      <div className="relative flex items-center gap-2">
         {imagePreview && (
           <div className="absolute bottom-full left-0 mb-2 p-2 bg-card rounded-lg border shadow-lg">
             <div className="relative">
@@ -202,12 +203,12 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="relative flex-1">
-          <Textarea
+          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Envoyez un message..."
             className={cn(
-              "min-h-[50px] sm:min-h-[60px] max-h-[200px] resize-none transition-all text-sm sm:text-base pr-10",
+              "h-9 sm:h-11 md:h-12 transition-all text-sm sm:text-base pr-10",
               "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
               "focus-visible:ring-0"
             )}
@@ -219,21 +220,23 @@ export const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
             }}
             disabled={isLoading}
           />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-            disabled={isLoading}
-            title={isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement vocal"}
-          >
-            {isRecording ? (
-              <MicOff className="h-4 w-4 text-red-500" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
-          </Button>
+          {!isWebView && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+              onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+              disabled={isLoading}
+              title={isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement vocal"}
+            >
+              {isRecording ? (
+                <MicOff className="h-4 w-4 text-red-500" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </div>
         <Button
           type="submit"

@@ -1,4 +1,4 @@
-import { Layers, Globe, Image, Sparkles, Zap } from "lucide-react";
+import { Layers, Globe, Image, Sparkles, Zap, Volume2 } from "lucide-react";
 
 export const VersionCard = () => {
   return (
@@ -22,6 +22,12 @@ export const VersionCard = () => {
           <Globe className="w-4 h-4 text-blue-400" />
           <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
             Recherche web
+          </p>
+        </div>
+        <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1 mt-1">
+          <Volume2 className="w-4 h-4 text-green-400" />
+          <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
+            Synthèse vocale
           </p>
         </div>
       </div>

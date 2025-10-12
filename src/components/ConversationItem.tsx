@@ -130,6 +130,9 @@ export const ConversationItem = ({
 
   return (
     <>
+      {isRenameDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[9998]" onClick={() => setIsRenameDialogOpen(false)} />
+      )}
       <ContextMenu>
         <ContextMenuTrigger asChild>{ConversationButton}</ContextMenuTrigger>
         <ContextMenuContent>
@@ -157,7 +160,7 @@ export const ConversationItem = ({
       </ContextMenu>
 
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent>
+        <DialogContent className="z-[9999]">
           <DialogHeader>
             <DialogTitle>Renommer la conversation</DialogTitle>
             <DialogDescription>

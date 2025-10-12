@@ -1,12 +1,13 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Volume2, StopCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { SourcesButton } from "./SourcesButton";
+import { Button } from "@/components/ui/button";
 
 interface MessageContent {
   type: "text" | "image_url";
@@ -30,6 +31,42 @@ interface ChatMessageProps {
 
 export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) => {
   const isUser = role === "user";
+  const [isSpeaking, setIsSpeaking] = React.useState(false);
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      if (isSpeaking) {
+        // Stop speaking
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      } else {
+        // Start speaking
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'fr-FR'; // French language
+        utterance.rate = 0.9; // Slightly slower for better comprehension
+        utterance.pitch = 1;
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+      }
+    } else {
+      alert('La synthèse vocale n\'est pas supportée par votre navigateur.');
+    }
+  };
+
+  const getTextContent = () => {
+    if (typeof content === "string") {
+      return content;
+    }
+    // Extract text from array content
+    return content
+      .filter(part => part.type === "text" && part.text)
+      .map(part => part.text)
+      .join(" ");
+  };
 
   const formatContent = () => {
     if (typeof content === "string") {
@@ -136,8 +173,26 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       </div>
       <div className="flex-1 space-y-2">
         {formatContent()}
-        {!isUser && searchResults && searchResults.length > 0 && (
-          <SourcesButton sources={searchResults} />
+        {!isUser && (
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => speakText(getTextContent())}
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              title={isSpeaking ? "Arrêter la lecture" : "Écouter la réponse"}
+            >
+              {isSpeaking ? (
+                <StopCircle className="h-4 w-4 mr-1" />
+              ) : (
+                <Volume2 className="h-4 w-4 mr-1" />
+              )}
+              {isSpeaking ? "Arrêter" : "Écouter"}
+            </Button>
+            {searchResults && searchResults.length > 0 && (
+              <SourcesButton sources={searchResults} />
+            )}
+          </div>
         )}
       </div>
     </div>

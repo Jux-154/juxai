@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
@@ -51,6 +51,7 @@ const Index = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebView, setIsWebView] = useState(false);
   const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Detect if running in WebView
@@ -144,14 +145,24 @@ const Index = () => {
   };
 
   const handleDeleteConversation = (id: string) => {
-    const filtered = conversations.filter((c) => c.id !== id);
-    saveConversations(filtered);
+    if (conversations.length === 1) {
+      // Si c'est la dernière conversation, créer une nouvelle d'abord
+      const newConv: Conversation = {
+        id: (Date.now() + 1).toString(),
+        title: "Nouvelle conversation",
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updated = [newConv];
+      saveConversations(updated);
+      setCurrentConversationId(newConv.id);
+    } else {
+      const filtered = conversations.filter((c) => c.id !== id);
+      saveConversations(filtered);
 
-    if (id === currentConversationId) {
-      if (filtered.length > 0) {
+      if (id === currentConversationId) {
         setCurrentConversationId(filtered[0].id);
-      } else {
-        createNewChat();
       }
     }
 
@@ -279,7 +290,17 @@ const Index = () => {
           updateConversation(currentConversationId, {
             messages: [...updatedMessages, assistantMessage],
           });
-          
+
+          // Auto-scroll to the new assistant message with smooth animation
+          setTimeout(() => {
+            if (scrollAreaRef.current) {
+              const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+              if (scrollContainer) {
+                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+              }
+            }
+          }, 100);
+
           break;
         } else if (pollData.status === "error") {
           throw new Error(pollData.response || "Erreur inconnue");
@@ -361,7 +382,7 @@ const Index = () => {
       <div className="flex-1 flex flex-col">
         {/* Chat Area */}
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
+          <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4">
@@ -410,7 +431,7 @@ const Index = () => {
         {/* Input Area */}
         <div className="border-t border-border bg-background">
           <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
-            <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+            <ChatInput onSend={handleSendMessage} isLoading={isLoading} isWebView={isWebView} />
           </div>
         </div>
       </div>
