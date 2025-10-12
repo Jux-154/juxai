@@ -12,11 +12,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Plus } from "lucide-react";
 
+interface SearchResult {
+  title: string;
+  snippet: string;
+  url: string;
+  date?: string;
+  score?: number;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string | MessageContent[];
   timestamp: number;
+  searchResults?: SearchResult[];
 }
 
 interface MessageContent {
@@ -185,6 +194,11 @@ const Index = () => {
         if (pollData.status === "done") {
           response = pollData.response || "";
           
+          // Stocker les résultats de recherche si disponibles
+          const searchResults = useWebSearch && pollData.search_results 
+            ? (pollData.search_results as any).results 
+            : undefined;
+          
           // Si recherche web, afficher un toast avec les résultats
           if (useWebSearch && pollData.search_results) {
             const searchData = pollData.search_results as any;
@@ -193,6 +207,19 @@ const Index = () => {
               description: `${searchData.count || 0} résultats trouvés`,
             });
           }
+          
+          // Créer le message assistant avec les sources
+          const assistantMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: response,
+            timestamp: Date.now(),
+            searchResults: searchResults,
+          };
+
+          updateConversation(currentConversationId, {
+            messages: [...updatedMessages, assistantMessage],
+          });
           
           break;
         } else if (pollData.status === "error") {
@@ -206,16 +233,6 @@ const Index = () => {
         throw new Error("Timeout: aucune réponse reçue");
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-        timestamp: Date.now(),
-      };
-
-      updateConversation(currentConversationId, {
-        messages: [...updatedMessages, assistantMessage],
-      });
     } catch (error: any) {
       console.error("Erreur:", error);
       toast({

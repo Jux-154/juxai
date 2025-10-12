@@ -6,6 +6,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { SourcesButton } from "./SourcesButton";
 
 interface MessageContent {
   type: "text" | "image_url";
@@ -13,12 +14,21 @@ interface MessageContent {
   image_url?: { url: string };
 }
 
+interface SearchResult {
+  title: string;
+  snippet: string;
+  url: string;
+  date?: string;
+  score?: number;
+}
+
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string | MessageContent[];
+  searchResults?: SearchResult[];
 }
 
-export const ChatMessage = ({ role, content }: ChatMessageProps) => {
+export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) => {
   const isUser = role === "user";
 
   const formatContent = () => {
@@ -124,7 +134,12 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
           />
         )}
       </div>
-      <div className="flex-1 space-y-2">{formatContent()}</div>
+      <div className="flex-1 space-y-2">
+        {formatContent()}
+        {!isUser && searchResults && searchResults.length > 0 && (
+          <SourcesButton sources={searchResults} />
+        )}
+      </div>
     </div>
   );
 };
