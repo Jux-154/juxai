@@ -106,6 +106,7 @@ const Index = () => {
 
   const handleRenameConversation = (id: string, newTitle: string) => {
     updateConversation(id, { title: newTitle });
+    setIsSidebarOpen(false);
     toast({
       title: "Conversation renommée",
       description: `Le titre a été changé en "${newTitle}"`,
@@ -115,7 +116,7 @@ const Index = () => {
   const handleDeleteConversation = (id: string) => {
     const filtered = conversations.filter((c) => c.id !== id);
     saveConversations(filtered);
-    
+
     if (id === currentConversationId) {
       if (filtered.length > 0) {
         setCurrentConversationId(filtered[0].id);
@@ -123,7 +124,8 @@ const Index = () => {
         createNewChat();
       }
     }
-    
+
+    setIsSidebarOpen(false);
     toast({
       title: "Conversation supprimée",
       description: "La conversation a été supprimée avec succès",
