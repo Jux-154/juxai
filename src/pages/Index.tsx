@@ -282,7 +282,7 @@ const Index = () => {
   const currentMessages = getCurrentConversation()?.messages || [];
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="flex h-screen bg-background relative overflow-hidden">
       <MobileSidebarToggle onClick={toggleSidebar} />
 
       {/* Sidebar Overlay */}
