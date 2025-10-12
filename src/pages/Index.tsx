@@ -142,45 +142,7 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Mode recherche web: appeler directement le serveur Python local
-      if (useWebSearch) {
-        const response = await fetch("http://localhost:5000/api/message", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            session_id: currentConversationId,
-            message: content,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur serveur de recherche: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.reply || "Aucune réponse reçue",
-          timestamp: Date.now(),
-        };
-
-        updateConversation(currentConversationId, {
-          messages: [...updatedMessages, assistantMessage],
-        });
-
-        toast({
-          title: "Recherche web effectuée",
-          description: `${data.search?.count || 0} résultats trouvés`,
-        });
-
-        setIsLoading(false);
-        return;
-      }
-
-      // Mode normal: utiliser Supabase
+      // Préparer le prompt pour Supabase
       const promptText = imageBase64
         ? `${content} [Image: ${imageBase64}]`
         : content;
@@ -193,6 +155,7 @@ const Index = () => {
             prompt: promptText,
             imput_message: { text: content },
             status: "pending",
+            use_web_search: useWebSearch || false,
           },
         ])
         .select()
@@ -213,7 +176,7 @@ const Index = () => {
 
         const { data: pollData, error: pollError } = await supabase
           .from("requests")
-          .select("response, status")
+          .select("response, status, search_results")
           .eq("id", requestId)
           .single();
 
@@ -221,6 +184,16 @@ const Index = () => {
 
         if (pollData.status === "done") {
           response = pollData.response || "";
+          
+          // Si recherche web, afficher un toast avec les résultats
+          if (useWebSearch && pollData.search_results) {
+            const searchData = pollData.search_results as any;
+            toast({
+              title: "Recherche web effectuée",
+              description: `${searchData.count || 0} résultats trouvés`,
+            });
+          }
+          
           break;
         } else if (pollData.status === "error") {
           throw new Error(pollData.response || "Erreur inconnue");
