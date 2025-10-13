@@ -6,7 +6,7 @@ export const VersionCard = () => {
   };
 
   return (
-    <div className="w-[190px] h-[120px] transition-all duration-500 text-center overflow-hidden mt-5 rounded-[20px] hover:h-[200px] group cursor-pointer" style={{
+    <div className="w-[190px] h-[120px] transition-all duration-500 text-center overflow-hidden mt-5 rounded-[20px] hover:h-[170px] group cursor-pointer" style={{
       background: 'rgba(255, 255, 255, 0.1)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
@@ -33,16 +33,6 @@ export const VersionCard = () => {
           <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
             Synthèse vocale
           </p>
-        </div>
-        <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <ExternalLink className="w-4 h-4 text-purple-400" />
-          <button
-            onClick={handleVoirPlusClick}
-            className="transition-all duration-500 text-xs font-semibold hover:underline"
-            style={{ color: '#e0e0e0' }}
-          >
-            Voir plus
-          </button>
         </div>
       </div>
     </div>
