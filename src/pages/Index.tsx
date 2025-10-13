@@ -221,17 +221,42 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Préparer le prompt pour Supabase
-      const promptText = imageBase64
+      // Construire l'historique de conversation (derniers 20 messages)
+      const historyMessages = conv.messages.slice(-20); // Prendre les 20 derniers messages avant le nouveau
+      let conversationHistory = "";
+      if (historyMessages.length > 0) {
+        conversationHistory = "Voici les échanges précédents dans cette conversation :\n\n";
+        historyMessages.forEach((msg) => {
+          const roleLabel = msg.role === "user" ? "Utilisateur" : "Assistant";
+          let msgContent = "";
+          if (typeof msg.content === "string") {
+            msgContent = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            // Extraire seulement le texte, ignorer les images pour l'historique
+            msgContent = msg.content
+              .filter(part => part.type === "text" && part.text)
+              .map(part => part.text)
+              .join(" ");
+          }
+          if (msgContent.trim()) {
+            conversationHistory += `${roleLabel}: ${msgContent}\n\n`;
+          }
+        });
+        conversationHistory += "Nouvelle question :\n";
+      }
+
+      // Préparer le prompt pour Supabase avec historique
+      const currentPrompt = imageBase64
         ? `${content} [Image: ${imageBase64}]`
         : content;
+      const fullPrompt = conversationHistory + currentPrompt;
 
       // Insérer la requête dans la table requests
       const { data: insertData, error: insertError } = await supabase
         .from("requests")
         .insert([
           {
-            prompt: promptText,
+            prompt: fullPrompt,
             imput_message: { text: content },
             status: "pending",
             use_web_search: useWebSearch || false,
@@ -263,12 +288,12 @@ const Index = () => {
 
         if (pollData.status === "done") {
           response = pollData.response || "";
-          
+
           // Stocker les résultats de recherche si disponibles
-          const searchResults = useWebSearch && pollData.search_results 
-            ? (pollData.search_results as any).results 
+          const searchResults = useWebSearch && pollData.search_results
+            ? (pollData.search_results as any).results
             : undefined;
-          
+
           // Si recherche web, afficher un toast avec les résultats
           if (useWebSearch && pollData.search_results) {
             const searchData = pollData.search_results as any;
@@ -277,7 +302,7 @@ const Index = () => {
               description: `${searchData.count || 0} résultats trouvés`,
             });
           }
-          
+
           // Créer le message assistant avec les sources
           const assistantMessage: Message = {
             id: (Date.now() + 1).toString(),
