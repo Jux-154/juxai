@@ -1,0 +1,105 @@
+/* ---------------------
+   Loader complet — 30s
+   --------------------- */
+
+:root {
+  --loader-width: 150px;
+  --loader-height: 3px;
+  --loader-bg: rgba(236, 236, 238, 0.253);
+  --progress-color: rgb(255, 255, 255);
+  --fill-duration: 30s; /* durée principale demandée */
+}
+
+/* conteneur général */
+.loader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25em 0;
+}
+
+/* animations SVG / dash (optionnel, conserve effet existant) */
+.dash {
+  animation: dashArray 2s ease-in-out infinite, dashOffset 2s linear infinite;
+}
+
+.spin {
+  animation: spinDashArray 2s ease-in-out infinite, spin 8s ease-in-out infinite,
+    dashOffset 2s linear infinite;
+  transform-origin: center;
+}
+
+/* barre de fond */
+.progress-loader {
+  width: var(--loader-width);
+  background: var(--loader-bg);
+  height: var(--loader-height);
+  border-radius: 7px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* barre de progression */
+.progress {
+  display: block;
+  width: 0%; /* commence à 0 */
+  height: var(--loader-height);
+  border-radius: 7px;
+  background: var(--progress-color);
+  /* 1) animation principale : remplit 0 -> 100 en 30s (une seule fois, forwards)
+     2) animation secondaire : démarre après 30s et tourne en boucle pour maintenir 100% */
+  animation:
+    loadTo100 var(--fill-duration) ease-in-out 0s 1 forwards,
+    holdAt100 1s linear var(--fill-duration) infinite forwards;
+  animation-fill-mode: forwards;
+  transition: width 0.2s linear;
+}
+
+/* classe utilitaire si tu veux forcer l'état final via JS */
+.progress.completed {
+  animation: none !important;
+  width: 100% !important;
+}
+
+/* ---------------------
+   Keyframes
+   --------------------- */
+
+/* remplit la barre (0 -> 100) en var(--fill-duration) */
+@keyframes loadTo100 {
+  0%   { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* animation secondaire — démarre après la fin de loadTo100
+   elle ne modifie pas la largeur mais tourne en boucle pour "maintenir" l'état */
+@keyframes holdAt100 {
+  0%   { width: 100%; }
+  100% { width: 100%; }
+}
+
+/* dash / spin (préservés depuis ton fichier d'origine) */
+@keyframes dashArray {
+  0% { stroke-dasharray: 0 1 359 0; }
+  50% { stroke-dasharray: 0 359 1 0; }
+  100% { stroke-dasharray: 359 1 0 0; }
+}
+
+@keyframes spinDashArray {
+  0%   { stroke-dasharray: 270 90; }
+  50%  { stroke-dasharray: 0 360; }
+  100% { stroke-dasharray: 250 90; }
+}
+
+@keyframes dashOffset {
+  0%   { stroke-dashoffset: 385; }
+  100% { stroke-dashoffset: 5; }
+}
+
+@keyframes spin {
+  0% { rotate: 0deg; }
+  12.5%, 25% { rotate: 270deg; }
+  37.5%, 50% { rotate: 540deg; }
+  62.5%, 75% { rotate: 810deg; }
+  87.5%, 100% { rotate: 1080deg; }
+}

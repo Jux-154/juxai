@@ -51,6 +51,7 @@ const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebView, setIsWebView] = useState(false);
+  const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -203,20 +204,12 @@ const Index = () => {
     const updatedMessages = [...conv.messages, userMessage];
     updateConversation(currentConversationId, { messages: updatedMessages });
 
-    // Update title with first message
-    if (updatedMessages.length === 1) {
-      const title =
-        (typeof userMessage.content === "string"
-          ? userMessage.content
-          : userMessage.content[0]?.text || ""
-        ).slice(0, 50) +
-        ((typeof userMessage.content === "string"
-          ? userMessage.content
-          : userMessage.content[0]?.text || ""
-        ).length > 50
-          ? "..."
-          : "");
-      updateConversation(currentConversationId, { title });
+    // Trigger title animation sequence for new conversations
+    if (conv.messages.length === 0) {
+      // Immediately clear the title when first message is sent
+      updateConversation(currentConversationId, { title: "" });
+      setTitleAnimationState('removing');
+      setTimeout(() => setTitleAnimationState('waiting'), 300);
     }
 
     setIsLoading(true);
@@ -291,6 +284,20 @@ const Index = () => {
         if (pollData.status === "done") {
           response = pollData.response || "";
 
+          // Vérifier si la réponse contient titre et contenu (nouvelle conversation)
+          let finalContent = response;
+          let conversationTitle = null;
+
+          try {
+            const parsedResponse = JSON.parse(response);
+            if (parsedResponse.title && parsedResponse.content) {
+              conversationTitle = parsedResponse.title;
+              finalContent = parsedResponse.content;
+            }
+          } catch (e) {
+            // Pas de JSON, réponse normale
+          }
+
           // Stocker les résultats de recherche si disponibles
           const searchResults = useWebSearch && pollData.search_results
             ? (pollData.search_results as any).results
@@ -309,14 +316,43 @@ const Index = () => {
           const assistantMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: response,
+            content: finalContent,
             timestamp: Date.now(),
             searchResults: searchResults,
           };
 
-          updateConversation(currentConversationId, {
+          // Mettre à jour la conversation avec le titre et les messages
+          const updates: Partial<Conversation> = {
             messages: [...updatedMessages, assistantMessage],
-          });
+          };
+          if (conversationTitle) {
+            // If waiting animation is still running, complete it first and keep it until title arrives
+            if (titleAnimationState === 'waiting') {
+              setTitleAnimationState('completing');
+              // Set the title immediately but keep completing animation visible
+              updates.title = conversationTitle;
+              updateConversation(currentConversationId, updates);
+              // After a brief moment to show completion, trigger removing and arriving
+              setTimeout(() => {
+                setTitleAnimationState('removing');
+                setTimeout(() => {
+                  setTitleAnimationState('arriving');
+                  setTimeout(() => setTitleAnimationState('idle'), 500);
+                }, 300);
+              }, 500); // Keep completing visible for 500ms after title arrives
+            } else {
+              // Normal flow if waiting animation already completed
+              setTitleAnimationState('removing');
+              setTimeout(() => {
+                updates.title = conversationTitle;
+                updateConversation(currentConversationId, updates);
+                setTitleAnimationState('arriving');
+                setTimeout(() => setTitleAnimationState('idle'), 500);
+              }, 300);
+            }
+          } else {
+            updateConversation(currentConversationId, updates);
+          }
 
           // Auto-scroll to the new assistant message with smooth animation
           setTimeout(() => {
@@ -400,6 +436,7 @@ const Index = () => {
                 onRename={handleRenameConversation}
                 onDelete={handleDeleteConversation}
                 isMobile={true}
+                animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
               />
             ))}
           </div>

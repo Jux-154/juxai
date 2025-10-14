@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import "./LoaderAnimation.css";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -41,6 +42,7 @@ interface ConversationItemProps {
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
   isMobile?: boolean;
+  animationState?: 'idle' | 'removing' | 'waiting' | 'completing' | 'arriving';
 }
 
 export const ConversationItem = ({
@@ -51,6 +53,7 @@ export const ConversationItem = ({
   onRename,
   onDelete,
   isMobile = false,
+  animationState = 'idle',
 }: ConversationItemProps) => {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -89,13 +92,37 @@ export const ConversationItem = ({
       onClick={onClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex items-center gap-2 group ${
+      className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex items-center gap-2 group relative ${
         isActive
           ? "bg-accent text-accent-foreground border-l-2 border-primary"
           : "hover:bg-accent/50"
       }`}
     >
-      <div className="truncate flex-1">{title}</div>
+      <div
+        className={`truncate flex-1 transition-all duration-300 ${
+          animationState === 'removing'
+            ? 'animate-pulse opacity-50 transform translate-x-2'
+            : animationState === 'completing'
+            ? 'opacity-100 transition-opacity duration-200'
+            : animationState === 'arriving'
+            ? 'animate-in slide-in-from-left duration-500'
+            : ''
+        }`}
+      >
+        {title}
+      </div>
+
+      {(animationState === 'waiting' || animationState === 'completing' || animationState === 'removing') && (
+        <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+          animationState === 'completing' ? 'opacity-100' :
+          animationState === 'removing' ? 'opacity-0' : ''
+        }`}>
+          <div className="progress-loader">
+            <div className="progress"></div>
+          </div>
+        </div>
+      )}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <button className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} p-1 hover:bg-accent rounded transition-opacity`}>
