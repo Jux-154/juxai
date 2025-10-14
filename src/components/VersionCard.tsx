@@ -1,4 +1,4 @@
-import { Layers, Globe, Image, Sparkles, Zap, Volume2, ExternalLink } from "lucide-react";
+import { Layers, Brain } from "lucide-react";
 
 export const VersionCard = () => {
   const handleVoirPlusClick = () => {
@@ -18,26 +18,14 @@ export const VersionCard = () => {
           <Layers className="w-full h-full" style={{ color: 'rgba(66,193,110,1)' }} />
         </div>
         <span className="text-sm tracking-wider font-black uppercase py-1 px-0 pb-3.5 transition-all duration-500 group-hover:p-0 group-hover:text-primary" style={{ color: '#edededc5' }}>
-          Version v1.1
+          Version v1.1.2
         </span>
       </div>
       <div className="block text-left mx-4.5">
         <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1">
-          <Globe className="w-4 h-4 text-blue-400" />
-          <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
-            Recherche web
-          </p>
-          <span className="text-xs font-medium px-1 py-0.5 rounded text-blue-300 bg-blue-900/30">
-            BETA
-          </span>
-        </div>
-        <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1 mt-1">
-          <Volume2 className="w-4 h-4 text-green-400" />
-          <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
-            Synthèse vocale
-          </p>
-          <span className="text-xs font-medium px-1 py-0.5 rounded text-green-300 bg-green-900/30">
-            FR
+          <Brain className="w-4 h-4 text-green-400" />
+          <span className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
+            Mémoire de discussion
           </span>
         </div>
       </div>
