@@ -27,12 +27,18 @@ export const VersionCard = () => {
           <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
             Recherche web
           </p>
+          <span className="text-xs font-medium px-1 py-0.5 rounded text-blue-300 bg-blue-900/30">
+            BETA
+          </span>
         </div>
         <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1 mt-1">
           <Volume2 className="w-4 h-4 text-green-400" />
           <p className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
             Synthèse vocale
           </p>
+          <span className="text-xs font-medium px-1 py-0.5 rounded text-green-300 bg-green-900/30">
+            FR
+          </span>
         </div>
       </div>
     </div>
