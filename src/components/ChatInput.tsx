@@ -1,6 +1,6 @@
-import { useState, FormEvent, useRef } from "react";
+import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +25,7 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -137,6 +138,30 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
     }
   };
 
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      if (input === '') {
+        // Set initial height to match button height based on screen size
+        const width = window.innerWidth;
+        let height = '36px'; // default h-9
+        if (width >= 640) height = '44px'; // sm:h-11
+        if (width >= 768) height = '48px'; // md:h-12
+        textareaRef.current.style.height = height;
+      } else {
+        textareaRef.current.style.height = 'auto';
+        const scrollHeight = textareaRef.current.scrollHeight;
+        const maxHeight = 100; // max-h-[100px]
+
+        if (scrollHeight <= maxHeight) {
+          textareaRef.current.style.height = scrollHeight + 'px';
+        } else {
+          textareaRef.current.style.height = maxHeight + 'px';
+        }
+      }
+    }
+  }, [input]);
+
   return (
     <form onSubmit={handleSubmit} className="relative">
       <div className="relative flex items-center gap-2">
@@ -212,26 +237,39 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
             >
               <Globe className="h-4 w-4" />
               {useWebSearch ? "Désactiver" : "Activer"} recherche web
+              <span className="ml-1 text-[10px] bg-gray-400 text-white px-0.5 py-0.5 rounded">Beta</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="relative flex-1">
-          <Input
+          <Textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Envoyez un message..."
             className={cn(
-              "h-9 sm:h-11 md:h-12 transition-all text-sm sm:text-base pr-10",
+              "min-h-[36px] max-h-[100px] h-9 sm:h-11 md:h-12 transition-all text-sm sm:text-base pr-10 resize-none",
               "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
-              "focus-visible:ring-0"
+              "focus-visible:ring-0 overflow-y-auto"
             )}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
+              if (e.key === "Enter") {
+                if (e.shiftKey) {
+                  // Allow new line with Shift+Enter
+                  return;
+                } else {
+                  // Submit on Enter (desktop) or if on mobile, allow new line
+                  if (window.innerWidth > 768) {
+                    // Desktop: submit on Enter
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                  // Mobile: allow new line on Enter
+                }
               }
             }}
             disabled={isLoading}
+            rows={1}
           />
           {!isWebView && (
             <Button

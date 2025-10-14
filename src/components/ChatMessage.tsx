@@ -9,6 +9,83 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { SourcesButton } from "./SourcesButton";
 import { Button } from "@/components/ui/button";
 
+// Custom component for code blocks with copy button
+const CodeBlockWithCopy = ({ children, language, ...props }: any) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = children;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Truncate display text if too long, but keep full text for copying
+  const maxDisplayLength = 800;
+  let displayText = children;
+  if (children.length > maxDisplayLength) {
+    const truncated = children.substring(0, maxDisplayLength);
+    const lastNewline = truncated.lastIndexOf('\n');
+    if (lastNewline > 0) {
+      displayText = truncated.substring(0, lastNewline) + '\n...';
+    } else {
+      displayText = truncated + '...';
+    }
+  }
+
+  return (
+    <div className="relative w-full max-w-full overflow-hidden">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={copyToClipboard}
+        className="absolute top-2 right-2 h-6 w-6 p-0 bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground z-10"
+        title="Copier le code"
+      >
+        {copied ? (
+          <Check className="h-3 w-3" />
+        ) : (
+          <Copy className="h-3 w-3" />
+        )}
+      </Button>
+      <div className="w-full max-w-full">
+        <SyntaxHighlighter
+          style={oneDark}
+          language={language}
+          PreTag="div"
+          className="w-full max-w-full"
+          customStyle={{
+            whiteSpace: 'nowrap',
+            overflowX: 'hidden',
+            textOverflow: 'ellipsis',
+            display: 'block',
+            maxWidth: '100%',
+            paddingRight: '1rem',
+          }}
+          onClick={(e) => {
+            const el = e.currentTarget;
+            el.style.overflowX = el.style.overflowX === 'auto' ? 'hidden' : 'auto';
+          }}
+          {...props}
+        >
+          {displayText}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+};
+
 interface MessageContent {
   type: "text" | "image_url";
   text?: string;
@@ -145,14 +222,12 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
               code({ node, inline, className, children, ...props }: any) {
                 const match = /language-(\w+)/.exec(className || "");
                 return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={oneDark}
+                  <CodeBlockWithCopy
                     language={match[1]}
-                    PreTag="div"
                     {...props}
                   >
                     {String(children).replace(/\n$/, "")}
-                  </SyntaxHighlighter>
+                  </CodeBlockWithCopy>
                 ) : (
                   <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
                     {children}
@@ -181,13 +256,12 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
                     code({ node, inline, className, children, ...props }: any) {
                       const match = /language-(\w+)/.exec(className || "");
                       return !inline && match ? (
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          PreTag="div"
+                        <CodeBlockWithCopy
+                          language={match[1]}
                           {...props}
                         >
                           {String(children).replace(/\n$/, "")}
-                        </SyntaxHighlighter>
+                        </CodeBlockWithCopy>
                       ) : (
                         <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
                           {children}
