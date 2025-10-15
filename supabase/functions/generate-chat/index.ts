@@ -24,10 +24,10 @@ serve(async (req) => {
     if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
       console.error('Invalid prompt received:', prompt);
       return new Response(
-        JSON.stringify({ error: 'Le champ "prompt" est requis et doit être une chaîne non vide' }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        JSON.stringify({ error: 'Jux a échoué à votre demande, pour en savoir plus, consultez la FAQ dans les paramètres.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -57,13 +57,13 @@ serve(async (req) => {
       const errorText = await lmStudioResponse.text();
       console.error('LM Studio API error:', lmStudioResponse.status, errorText);
       return new Response(
-        JSON.stringify({ 
-          error: `Erreur LM Studio: ${lmStudioResponse.status}`,
-          details: errorText 
-        }), 
-        { 
-          status: 502, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        JSON.stringify({
+          error: 'Jux a échoué à votre demande, pour en savoir plus, consultez la FAQ dans les paramètres.',
+          details: errorText
+        }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -77,10 +77,10 @@ serve(async (req) => {
     if (!generatedText) {
       console.error('No content in LM Studio response:', data);
       return new Response(
-        JSON.stringify({ error: 'Aucune réponse générée par LM Studio' }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        JSON.stringify({ error: 'Jux a échoué à votre demande, pour en savoir plus, consultez la FAQ dans les paramètres.' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -98,13 +98,13 @@ serve(async (req) => {
     console.error('Error in generate-chat function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     return new Response(
-      JSON.stringify({ 
-        error: 'Erreur serveur lors de la génération',
-        message: errorMessage 
-      }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify({
+        error: 'Jux a échoué à votre demande, pour en savoir plus, consultez la FAQ dans les paramètres.',
+        message: errorMessage
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
