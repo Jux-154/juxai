@@ -59,16 +59,24 @@ const Index = () => {
     // Detect if running in WebView
     const detectWebView = () => {
       const ua = navigator.userAgent.toLowerCase();
-      return ua.includes('wv') ||
-             (window.navigator as any).standalone ||
-             !!(window as any).webkit?.messageHandlers;
+      const isAndroidWebView = ua.includes('wv') || (ua.includes('android') && !ua.includes('chrome'));
+      const isIOSWebView = /mobile\/\w+ safari\/\d+/.test(ua) && !/version\/\d+\.\d+ safari\/\d+/.test(ua);
+      const isStandalone = (window.navigator as any).standalone;
+      const hasWebkitHandlers = !!(window as any).webkit?.messageHandlers;
+      const isEmbedded = window.self !== window.top;
+
+      return isAndroidWebView || isIOSWebView || isStandalone || hasWebkitHandlers || isEmbedded;
     };
     setIsWebView(detectWebView());
 
     loadConversations();
 
-    // Request fullscreen on page load
+    // Request fullscreen on page load (only if not in WebView)
     const requestFullscreen = async () => {
+      if (detectWebView()) {
+        console.log("WebView detected, skipping fullscreen request");
+        return;
+      }
       try {
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();
