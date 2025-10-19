@@ -12,7 +12,7 @@ export const PauseNotice = () => {
             Projet en pause
           </h3>
           <p className="text-amber-200/70 text-xs leading-relaxed">
-            Le développement de ce projet est actuellement en pause. Les fonctionnalités existantes restent disponibles.
+            Le développement de ce projet est actuellement en pause. La communication avec l'IA est impossible jusqu'à nouvel ordre.
           </p>
         </div>
       </div>
