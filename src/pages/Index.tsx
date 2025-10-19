@@ -5,7 +5,7 @@ import { ConversationItem } from "@/components/ConversationItem";
 import { MobileSidebarToggle } from "@/components/MobileSidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
-
+import { PauseNotice } from "@/components/PauseNotice";
 import { DownloadModal } from "@/components/DownloadModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -465,6 +465,7 @@ const Index = () => {
                   <p className="text-muted-foreground max-w-md mb-4">
                     Démarrez une conversation avec le modèle Qwen
                   </p>
+                  <PauseNotice />
                   {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
                   <VersionCard />
                 </div>
