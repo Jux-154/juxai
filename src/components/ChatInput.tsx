@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle, Sparkles } from "lucide-react";
+import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -22,7 +22,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ChatInputProps {
-  onSend: (message: string, imageBase64?: string, useWebSearch?: boolean, generateImage?: boolean) => void;
+  onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
   isLoading: boolean;
   isWebView?: boolean;
 }
@@ -32,8 +32,7 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [useWebSearch, setUseWebSearch] = useState(false);
-  const [generateImage, setGenerateImage] = useState(false);
-  const [mode, setMode] = useState<"none" | "image" | "web" | "generate">("none");
+  const [mode, setMode] = useState<"none" | "image" | "web">("none");
   const [isRecording, setIsRecording] = useState(false);
   const [showBetaWarning, setShowBetaWarning] = useState(false);
   const [dismissBetaWarning, setDismissBetaWarning] = useState(false);
@@ -51,13 +50,12 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if ((input.trim() || imageBase64) && !isLoading) {
-      onSend(input.trim(), imageBase64 || undefined, useWebSearch, generateImage);
+      onSend(input.trim(), imageBase64 || undefined, useWebSearch);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
       setMode("none");
       setUseWebSearch(false);
-      setGenerateImage(false);
     }
   };
 
@@ -219,10 +217,10 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
             <Button
               type="button"
               size="icon"
-              variant={(imageBase64 || useWebSearch || generateImage) ? "default" : "outline"}
+              variant={(imageBase64 || useWebSearch) ? "default" : "outline"}
               className={cn(
                 "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-                (imageBase64 || useWebSearch || generateImage)
+                (imageBase64 || useWebSearch)
                   ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                   : "bg-card border-border hover:bg-accent hover:border-primary"
               )}
@@ -266,25 +264,6 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
               <Globe className="h-4 w-4" />
               {useWebSearch ? "Désactiver" : "Activer"} recherche web
               <span className="ml-1 text-[10px] bg-red-500 text-white px-0.5 py-0.5 rounded">Beta</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                // If image is uploaded or web search is enabled, disable them when enabling image generation
-                if (imageBase64) {
-                  setImagePreview(null);
-                  setImageBase64(null);
-                }
-                if (useWebSearch) {
-                  setUseWebSearch(false);
-                }
-                setGenerateImage(!generateImage);
-                setMode(generateImage ? "none" : "generate");
-              }}
-              className={cn("flex items-center gap-2", (imageBase64 || useWebSearch) && "opacity-50 cursor-not-allowed")}
-              disabled={!!imageBase64 || useWebSearch}
-            >
-              <Sparkles className="h-4 w-4" />
-              {generateImage ? "Désactiver" : "Activer"} génération d'image
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
