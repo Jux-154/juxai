@@ -44,6 +44,7 @@ interface Conversation {
 }
 
 const Index = () => {
+  const showPauseNotice = false; // Set to true to show the pause notice again
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -465,7 +466,7 @@ const Index = () => {
                   <p className="text-muted-foreground max-w-md mb-4">
                     Démarrez une conversation avec le modèle Qwen
                   </p>
-                  <PauseNotice />
+                  {showPauseNotice && <PauseNotice />}
                   {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
                   <VersionCard />
                 </div>
