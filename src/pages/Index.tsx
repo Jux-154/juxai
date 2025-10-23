@@ -43,7 +43,6 @@ interface Conversation {
   updatedAt: number;
 }
 
-// Update trigger for Lovable deployment
 const Index = () => {
   const showPauseNotice = false; // Set to true to show the pause notice again
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -304,7 +303,7 @@ const Index = () => {
         .insert([
           {
             prompt: fullPrompt,
-            input_message: { text: content },
+            imput_message: { text: content },
             status: "pending",
             use_web_search: useWebSearch || false,
           },
