@@ -303,7 +303,7 @@ const Index = () => {
         .insert([
           {
             prompt: fullPrompt,
-            imput_message: { text: content },
+            input_message: { text: content },
             status: "pending",
             use_web_search: useWebSearch || false,
           },
