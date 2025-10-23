@@ -184,7 +184,7 @@ const Index = () => {
     });
   };
 
-  const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean) => {
+  const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean, generateImage?: boolean) => {
     if (!currentConversationId) return;
 
     let userMessage: Message;
@@ -225,6 +225,48 @@ const Index = () => {
     setIsConversationLoading(true);
 
     try {
+      // Si on génère une image, on ne passe pas par Supabase/LM Studio
+      if (generateImage) {
+        console.log("Génération d'image en cours...");
+        const { generateFromText } = await import("@/utils/generateImages");
+        const generatedImageUrl = await generateFromText(content);
+
+        console.log("Image générée:", generatedImageUrl);
+        toast({
+          title: "Image générée",
+          description: "Votre image a été créée avec succès",
+        });
+
+        // Créer le message assistant avec juste l'image générée
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: [
+            { type: "text", text: `Voici l'image générée pour : "${content}"` },
+            { type: "image_url", image_url: { url: generatedImageUrl } }
+          ],
+          timestamp: Date.now(),
+        };
+
+        // Mettre à jour la conversation avec le message image
+        updateConversation(currentConversationId, {
+          messages: [...updatedMessages, assistantMessage],
+        });
+
+        // Auto-scroll to the new assistant message with smooth animation
+        setTimeout(() => {
+          if (scrollAreaRef.current) {
+            const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (scrollContainer) {
+              scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+            }
+          }
+        }, 100);
+
+        return; // Sortir de la fonction, pas besoin d'aller plus loin
+      }
+
+      // Pour les autres cas (chat normal ou recherche web), continuer avec Supabase
       // Construire l'historique de conversation (derniers 20 messages)
       const historyMessages = conv.messages.slice(-20); // Prendre les 20 derniers messages avant le nouveau
       let conversationHistory = "";
