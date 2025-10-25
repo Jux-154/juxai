@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle } from "lucide-react";
+import { Send, Loader2, Image, X, Plus, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -9,17 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface ChatInputProps {
   onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
@@ -31,31 +20,22 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [useWebSearch, setUseWebSearch] = useState(false);
-  const [mode, setMode] = useState<"none" | "image" | "web">("none");
+  const [mode, setMode] = useState<"none" | "image">("none");
   const [isRecording, setIsRecording] = useState(false);
-  const [showBetaWarning, setShowBetaWarning] = useState(false);
-  const [dismissBetaWarning, setDismissBetaWarning] = useState(false);
-  const [doNotShowAgain, setDoNotShowAgain] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check if beta warning should be shown
-  useEffect(() => {
-    const dismissed = localStorage.getItem("betaWarningDismissed");
-    setDismissBetaWarning(dismissed === "true");
-  }, []);
+
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if ((input.trim() || imageBase64) && !isLoading) {
-      onSend(input.trim(), imageBase64 || undefined, useWebSearch);
+      onSend(input.trim(), imageBase64 || undefined);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
       setMode("none");
-      setUseWebSearch(false);
     }
   };
 
@@ -68,10 +48,7 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
       return;
     }
 
-    // If web search is enabled, disable it when uploading image
-    if (useWebSearch) {
-      setUseWebSearch(false);
-    }
+
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -217,10 +194,10 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
             <Button
               type="button"
               size="icon"
-              variant={(imageBase64 || useWebSearch) ? "default" : "outline"}
+              variant={imageBase64 ? "default" : "outline"}
               className={cn(
                 "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-                (imageBase64 || useWebSearch)
+                imageBase64
                   ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                   : "bg-card border-border hover:bg-accent hover:border-primary"
               )}
@@ -236,34 +213,9 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
                 fileInputRef.current?.click();
                 setMode("image");
               }}
-              className={cn("flex items-center gap-2", useWebSearch && "opacity-50 cursor-not-allowed")}
-              disabled={useWebSearch}
             >
               <Image className="h-4 w-4" />
               Ajouter une image
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                // Show beta warning if not dismissed
-                if (!dismissBetaWarning) {
-                  setShowBetaWarning(true);
-                  setDoNotShowAgain(false); // Reset checkbox state
-                  return;
-                }
-                // If image is uploaded, disable it when enabling web search
-                if (imageBase64) {
-                  setImagePreview(null);
-                  setImageBase64(null);
-                }
-                setUseWebSearch(!useWebSearch);
-                setMode(useWebSearch ? "none" : "web");
-              }}
-              className={cn("flex items-center gap-2", imageBase64 && "opacity-50 cursor-not-allowed")}
-              disabled={!!imageBase64}
-            >
-              <Globe className="h-4 w-4" />
-              {useWebSearch ? "Désactiver" : "Activer"} recherche web
-              <span className="ml-1 text-[10px] bg-red-500 text-white px-0.5 py-0.5 rounded">Beta</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -332,57 +284,7 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
         </Button>
       </div>
 
-      {/* Beta Warning Dialog */}
-      <AlertDialog open={showBetaWarning} onOpenChange={setShowBetaWarning}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Fonctionnalité en Beta
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              La recherche web est actuellement en phase bêta. Elle peut parfois générer des réponses inexactes ou incomplètes.
-              Nous travaillons à améliorer cette fonctionnalité.
-              <div className="flex items-center space-x-2 mt-4">
-                <Checkbox
-                  id="doNotShowAgain"
-                  checked={doNotShowAgain}
-                  onCheckedChange={(checked) => setDoNotShowAgain(checked as boolean)}
-                />
-                <label
-                  htmlFor="doNotShowAgain"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Ne plus afficher ce message
-                </label>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowBetaWarning(false)}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowBetaWarning(false);
-                if (doNotShowAgain) {
-                  setDismissBetaWarning(true);
-                  localStorage.setItem("betaWarningDismissed", "true");
-                }
-                // If image is uploaded, disable it when enabling web search
-                if (imageBase64) {
-                  setImagePreview(null);
-                  setImageBase64(null);
-                }
-                setUseWebSearch(true);
-                setMode("web");
-              }}
-            >
-              Activer quand même
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </form>
   );
 };
