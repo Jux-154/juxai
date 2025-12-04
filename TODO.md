@@ -1,12 +1,6 @@
-# TODO: Remove Text Appearance Animation
+# TODO: Remove AI Response Generation Timeout
 
 ## Tasks
-- [ ] Remove typing animation logic from ChatMessage.tsx
-- [ ] Update state variables (remove isTyping and displayedContent)
-- [ ] Update formatContent function to show full text instantly
-- [ ] Update button visibility condition
-- [ ] Test the changes to ensure text appears instantly
-
-## Status
-- [x] Plan approved by user
-- [ ] Implementation in progress
+- [x] Modify polling loop in Index.tsx to remove timeout check
+- [x] Remove timeout error check after polling loop
+- [ ] Test the change to ensure infinite polling works

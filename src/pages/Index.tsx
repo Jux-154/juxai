@@ -319,12 +319,11 @@ const Index = () => {
       // Poller pour la réponse avec streaming en temps réel
       let response = "";
       let attempts = 0;
-      const maxAttempts = 120; // 120 tentatives (polling plus rapide)
       let streamingMessageId = (Date.now() + 1).toString();
       let isStreaming = false;
       let lastResponse = "";
 
-      while (attempts < maxAttempts) {
+      while (true) {
         // Polling plus rapide pendant le streaming (100ms), sinon 500ms
         await new Promise((resolve) => setTimeout(resolve, isStreaming ? 100 : 500));
 
@@ -482,10 +481,6 @@ const Index = () => {
         }
 
         attempts++;
-      }
-
-      if (!response && attempts >= maxAttempts) {
-        throw new Error("Timeout: aucune réponse reçue");
       }
 
     } catch (error: any) {
