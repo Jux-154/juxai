@@ -316,13 +316,17 @@ const Index = () => {
       const requestId = insertData.id;
       console.log("Requête insérée:", requestId);
 
-      // Poller pour la réponse
+      // Poller pour la réponse avec streaming en temps réel
       let response = "";
       let attempts = 0;
-      const maxAttempts = 60; // 60 secondes maximum
+      const maxAttempts = 120; // 120 tentatives (polling plus rapide)
+      let streamingMessageId = (Date.now() + 1).toString();
+      let isStreaming = false;
+      let lastResponse = "";
 
       while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Polling plus rapide pendant le streaming (100ms), sinon 500ms
+        await new Promise((resolve) => setTimeout(resolve, isStreaming ? 100 : 500));
 
         const { data: pollData, error: pollError } = await supabase
           .from("requests")
@@ -331,6 +335,51 @@ const Index = () => {
           .single();
 
         if (pollError) throw pollError;
+
+        // Gérer le streaming en temps réel
+        if (pollData.status === "streaming" && pollData.response) {
+          isStreaming = true;
+          const currentResponse = pollData.response;
+          
+          // Mettre à jour seulement si la réponse a changé
+          if (currentResponse !== lastResponse) {
+            lastResponse = currentResponse;
+            
+            // Créer ou mettre à jour le message assistant en streaming
+            const streamingMessage: Message = {
+              id: streamingMessageId,
+              role: "assistant",
+              content: currentResponse,
+              timestamp: Date.now(),
+            };
+
+            // Mettre à jour la conversation avec le message en cours
+            const currentConv = conversations.find(c => c.id === currentConversationId);
+            if (currentConv) {
+              const existingAssistantIndex = updatedMessages.findIndex(
+                m => m.id === streamingMessageId
+              );
+              
+              let newMessages;
+              if (existingAssistantIndex >= 0) {
+                newMessages = [...updatedMessages];
+                newMessages[existingAssistantIndex] = streamingMessage;
+              } else {
+                newMessages = [...updatedMessages, streamingMessage];
+              }
+              
+              updateConversation(currentConversationId, { messages: newMessages });
+              
+              // Auto-scroll pendant le streaming
+              if (scrollAreaRef.current) {
+                const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+                if (scrollContainer) {
+                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                }
+              }
+            }
+          }
+        }
 
         if (pollData.status === "done") {
           response = pollData.response || "";
@@ -363,49 +412,61 @@ const Index = () => {
             });
           }
 
-          // Créer le message assistant avec les sources
+          // Créer le message assistant final avec les sources
           const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
+            id: streamingMessageId,
             role: "assistant",
             content: finalContent,
             timestamp: Date.now(),
             searchResults: searchResults,
           };
 
-          // Mettre à jour la conversation avec le titre et les messages
-          const updates: Partial<Conversation> = {
-            messages: [...updatedMessages, assistantMessage],
-          };
-          if (conversationTitle) {
-            // If waiting animation is still running, complete it first and keep it until title arrives
-            if (titleAnimationState === 'waiting') {
-              setTitleAnimationState('completing');
-              // Set the title immediately but keep completing animation visible
-              updates.title = conversationTitle;
-              updateConversation(currentConversationId, updates);
-              // After a brief moment to show completion, trigger removing and arriving
-              setTimeout(() => {
+          // Mettre à jour la conversation avec le titre et les messages finaux
+          const currentConv = conversations.find(c => c.id === currentConversationId);
+          if (currentConv) {
+            const existingAssistantIndex = updatedMessages.findIndex(
+              m => m.id === streamingMessageId
+            );
+            
+            let finalMessages;
+            if (existingAssistantIndex >= 0) {
+              finalMessages = [...updatedMessages];
+              finalMessages[existingAssistantIndex] = assistantMessage;
+            } else {
+              finalMessages = [...updatedMessages, assistantMessage];
+            }
+
+            const updates: Partial<Conversation> = {
+              messages: finalMessages,
+            };
+
+            if (conversationTitle) {
+              if (titleAnimationState === 'waiting') {
+                setTitleAnimationState('completing');
+                updates.title = conversationTitle;
+                updateConversation(currentConversationId, updates);
+                setTimeout(() => {
+                  setTitleAnimationState('removing');
+                  setTimeout(() => {
+                    setTitleAnimationState('arriving');
+                    setTimeout(() => setTitleAnimationState('idle'), 500);
+                  }, 300);
+                }, 500);
+              } else {
                 setTitleAnimationState('removing');
                 setTimeout(() => {
+                  updates.title = conversationTitle;
+                  updateConversation(currentConversationId, updates);
                   setTitleAnimationState('arriving');
                   setTimeout(() => setTitleAnimationState('idle'), 500);
                 }, 300);
-              }, 500); // Keep completing visible for 500ms after title arrives
+              }
             } else {
-              // Normal flow if waiting animation already completed
-              setTitleAnimationState('removing');
-              setTimeout(() => {
-                updates.title = conversationTitle;
-                updateConversation(currentConversationId, updates);
-                setTitleAnimationState('arriving');
-                setTimeout(() => setTitleAnimationState('idle'), 500);
-              }, 300);
+              updateConversation(currentConversationId, updates);
             }
-          } else {
-            updateConversation(currentConversationId, updates);
           }
 
-          // Auto-scroll to the new assistant message with smooth animation
+          // Auto-scroll final
           setTimeout(() => {
             if (scrollAreaRef.current) {
               const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
