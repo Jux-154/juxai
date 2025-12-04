@@ -47,12 +47,12 @@ const CodeBlockWithCopy = ({ children, language, ...props }: any) => {
   }
 
   return (
-    <div className="relative w-full max-w-full overflow-hidden">
+    <div className="relative w-full max-w-full overflow-x-auto sm:overflow-hidden flex flex-col">
       <Button
         variant="ghost"
         size="sm"
         onClick={copyToClipboard}
-        className="absolute top-2 right-2 h-6 w-6 p-0 bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground z-10"
+        className="absolute top-1 right-1 sm:top-2 sm:right-2 h-6 w-6 p-0 bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground z-10"
         title="Copier le code"
       >
         {copied ? (
@@ -61,19 +61,25 @@ const CodeBlockWithCopy = ({ children, language, ...props }: any) => {
           <Copy className="h-3 w-3" />
         )}
       </Button>
-      <div className="w-full max-w-full">
+      <div className="w-full max-w-full min-w-0">
         <SyntaxHighlighter
           style={oneDark}
           language={language}
           PreTag="div"
-          className="w-full max-w-full"
+          className="w-full max-w-full min-w-0"
           customStyle={{
-            whiteSpace: 'nowrap',
-            overflowX: 'hidden',
-            textOverflow: 'ellipsis',
+            whiteSpace: 'pre',
+            overflowX: 'auto',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-all',
             display: 'block',
-            maxWidth: '100%',
-            paddingRight: '1rem',
+            minWidth: '100%',
+            fontSize: '0.75rem',
+            lineHeight: '1.25',
+            padding: '1rem',
+            paddingRight: '2.5rem',
+            borderRadius: '0.375rem',
+            margin: '0',
           }}
           onClick={(e) => {
             const el = e.currentTarget;

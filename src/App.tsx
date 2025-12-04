@@ -17,7 +17,7 @@ const App = () => {
     // Simulate loading time for components
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000); // 2 seconds loading
+    }, 3500); // 5 seconds loading
 
     return () => clearTimeout(timer);
   }, []);
@@ -31,7 +31,7 @@ const App = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 bg-background flex items-center justify-center z-50"
+          className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50"
         >
           <motion.div
             className="loader"
@@ -107,6 +107,14 @@ const App = () => {
               </g>
             </svg>
           </motion.div>
+          <motion.p
+            className="text-gray-400 text-xs sm:text-sm mt-8 opacity-70 absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 px-4 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+          >
+            Créé par Jules EVEN
+          </motion.p>
         </motion.div>
       ) : (
         <motion.div

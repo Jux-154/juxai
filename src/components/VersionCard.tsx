@@ -1,4 +1,4 @@
-import { Layers, Brain } from "lucide-react";
+import { Layers, Brain, Image } from "lucide-react";
 
 export const VersionCard = () => {
   const handleVoirPlusClick = () => {
@@ -18,14 +18,24 @@ export const VersionCard = () => {
           <Layers className="w-full h-full" style={{ color: 'rgba(66,193,110,1)' }} />
         </div>
         <span className="text-sm tracking-wider font-black uppercase py-1 px-0 pb-3.5 transition-all duration-500 group-hover:p-0 group-hover:text-primary" style={{ color: '#edededc5' }}>
-          Version v1.1.2
+          Version v1.1.3
         </span>
       </div>
       <div className="block text-left mx-4.5">
         <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1">
+          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+          <span className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
+            Images dans les prompts
+          </span>
+        </div>
+        <div className="flex items-center gap-2 transition-all duration-300 group-hover:translate-x-1 mt-1">
           <Brain className="w-4 h-4 text-green-400" />
           <span className="transition-all duration-500 text-xs font-semibold" style={{ color: '#e0e0e0' }}>
-            Mémoire de discussion
+            Mémoire de conversation
           </span>
         </div>
       </div>

@@ -53,33 +53,16 @@ const Index = () => {
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isWebView, setIsWebView] = useState(false);
+
   const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Detect if running in WebView
-    const detectWebView = () => {
-      const ua = navigator.userAgent.toLowerCase();
-      const isAndroidWebView = ua.includes('wv') || (ua.includes('android') && !ua.includes('chrome'));
-      const isIOSWebView = /mobile\/\w+ safari\/\d+/.test(ua) && !/version\/\d+\.\d+ safari\/\d+/.test(ua);
-      const isStandalone = (window.navigator as any).standalone;
-      const hasWebkitHandlers = !!(window as any).webkit?.messageHandlers;
-      const isEmbedded = window.self !== window.top;
-
-      return isAndroidWebView || isIOSWebView || isStandalone || hasWebkitHandlers || isEmbedded;
-    };
-    setIsWebView(detectWebView());
-
     loadConversations();
 
-    // Request fullscreen on page load (only if not in WebView)
+    // Request fullscreen on page load
     const requestFullscreen = async () => {
-      if (detectWebView()) {
-        console.log("WebView detected, skipping fullscreen request");
-        return;
-      }
       try {
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();
@@ -601,7 +584,7 @@ const Index = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.8 }}
                   >
-                    {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
+                    <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />
                   </motion.div>
 
                   <motion.div
@@ -669,13 +652,13 @@ const Index = () => {
         {/* Input Area */}
         <div className="border-t border-border bg-background">
           <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
-            <ChatInput onSend={handleSendMessage} isLoading={isLoading} isWebView={isWebView} />
+            <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
           </div>
         </div>
       </div>
 
 
-      {!isWebView && <DownloadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />}
+      <DownloadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 };

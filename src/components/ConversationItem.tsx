@@ -109,7 +109,7 @@ export const ConversationItem = ({
             : ''
         }`}
       >
-        {title}
+        {title.length > 27 ? `${title.substring(0, 27)}...` : title}
       </div>
 
       {(animationState === 'waiting' || animationState === 'completing' || animationState === 'removing') && (
