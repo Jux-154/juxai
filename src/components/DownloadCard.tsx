@@ -13,7 +13,7 @@ export const DownloadCard = ({ onDownloadClick }: DownloadCardProps) => {
         Nouvelle app de génération d'images, audios et vidéos (Propulsé par ComfyUI).
       </h3>
       <p className="text-[13px] font-semibold mb-3" style={{ color: 'rgb(151 153 167)' }}>
-        Découvrez bientôt mon nouvelle application pour créer du contenu multimédia par IA.
+        Découvrez bientôt man nouvelle application pour créer du contenu multimédia par IA.
       </p>
       <div className="flex items-center justify-center gap-2.5 mt-2.5">
         <button
