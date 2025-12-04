@@ -19,30 +19,33 @@ export type Database = {
           created_at: string
           id: string
           imput_message: Json | null
-          prompt: string | null
+          prompt: string
           response: string | null
           search_results: Json | null
-          status: string | null
+          status: string
+          updated_at: string
           use_web_search: boolean | null
         }
         Insert: {
           created_at?: string
           id?: string
           imput_message?: Json | null
-          prompt?: string | null
+          prompt: string
           response?: string | null
           search_results?: Json | null
-          status?: string | null
+          status?: string
+          updated_at?: string
           use_web_search?: boolean | null
         }
         Update: {
           created_at?: string
           id?: string
           imput_message?: Json | null
-          prompt?: string | null
+          prompt?: string
           response?: string | null
           search_results?: Json | null
-          status?: string | null
+          status?: string
+          updated_at?: string
           use_web_search?: boolean | null
         }
         Relationships: []
