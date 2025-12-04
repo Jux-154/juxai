@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Plus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { scaleVariants, slideInVariants, floatingVariants, useIntersectionObserver, staggerContainer } from "@/lib/animations";
 
 interface SearchResult {
   title: string;
@@ -557,17 +559,59 @@ const Index = () => {
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4">
-                  <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Discutez avec Jux
-                  </h1>
-                  <p className="text-muted-foreground max-w-md mb-4">
+                <motion.div
+                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4"
+                  variants={staggerContainer}
+                  initial="initial"
+                  animate="animate"
+                >
+                  <motion.div
+                    variants={slideInVariants.slideInUp}
+                    className="relative"
+                  >
+                    <motion.h1
+                      className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                    >
+                      Discutez avec Jux
+                    </motion.h1>
+                  </motion.div>
+
+                  <motion.p
+                    className="text-muted-foreground max-w-md mb-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                  >
                     Démarrez une conversation avec le modèle Qwen
-                  </p>
-                  {showPauseNotice && <PauseNotice />}
-                  {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
-                  <VersionCard />
-                </div>
+                  </motion.p>
+
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.6 }}
+                  >
+                    {showPauseNotice && <PauseNotice />}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.8 }}
+                  >
+                    {!isWebView && <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 1.0 }}
+                  >
+                    <VersionCard />
+                  </motion.div>
+                </motion.div>
               ) : (
                 <div className="space-y-0">
                   {currentMessages.map((message) => (
@@ -586,12 +630,35 @@ const Index = () => {
                     </div>
                   ))}
                   {isLoading && (
-                    <div className="px-3 sm:px-6 py-4 sm:py-6 bg-card">
-                      <div className="max-w-4xl mx-auto flex gap-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        <div className="text-muted-foreground">En train de réfléchir...</div>
+                    <motion.div
+                      className="px-3 sm:px-6 py-4 sm:py-6 bg-card"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="max-w-4xl mx-auto flex gap-4 items-center">
+                        <motion.div
+                          animate={{
+                            rotate: 360,
+                            scale: [1, 1.2, 1]
+                          }}
+                          transition={{
+                            rotate: { duration: 1, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                          }}
+                        >
+                          <Loader2 className="h-5 w-5 text-primary" />
+                        </motion.div>
+                        <motion.div
+                          className="text-muted-foreground"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          En train de réfléchir...
+                        </motion.div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               )}

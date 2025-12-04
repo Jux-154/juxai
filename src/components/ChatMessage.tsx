@@ -8,6 +8,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { SourcesButton } from "./SourcesButton";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTypewriter, messageVariants, buttonVariants } from "@/lib/animations";
 
 // Custom component for code blocks with copy button
 const CodeBlockWithCopy = ({ children, language, ...props }: any) => {
@@ -294,8 +296,22 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
   };
 
   return (
-    <div className="flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div
+    <motion.div
+      variants={messageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="flex gap-4"
+    >
+      <motion.div
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          delay: 0.1
+        }}
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
           isUser
@@ -304,53 +320,121 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
         )}
       >
         {isUser ? (
-          <User className="h-5 w-5" />
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 500 }}
+          >
+            <User className="h-5 w-5" />
+          </motion.div>
         ) : (
-          <img
+          <motion.img
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.3 }}
             src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
             alt="Jux"
             className="w-8 h-8 rounded-lg object-cover"
           />
         )}
-      </div>
+      </motion.div>
       <div className="flex-1 space-y-2">
         {formatContent()}
         {!isUser && (
-          <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => speakText(getTextContent())}
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              title={isSpeaking ? "Arrêter la lecture" : "Écouter la réponse"}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.3 }}
+            className="flex items-center gap-2 mt-2"
+          >
+            <motion.div
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
             >
-              {isSpeaking ? (
-                <StopCircle className="h-4 w-4 mr-1" />
-              ) : (
-                <Volume2 className="h-4 w-4 mr-1" />
-              )}
-              {isSpeaking ? "Arrêter" : "Écouter"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(getTextContent())}
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              title="Copier la réponse"
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => speakText(getTextContent())}
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                title={isSpeaking ? "Arrêter la lecture" : "Écouter la réponse"}
+              >
+                <AnimatePresence mode="wait">
+                  {isSpeaking ? (
+                    <motion.div
+                      key="stop"
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: 90 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <StopCircle className="h-4 w-4 mr-1" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="play"
+                      initial={{ scale: 0, rotate: 90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: -90 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Volume2 className="h-4 w-4 mr-1" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {isSpeaking ? "Arrêter" : "Écouter"}
+              </Button>
+            </motion.div>
+            <motion.div
+              variants={buttonVariants}
+              whileHover="hover"
+              whileTap="tap"
             >
-              {copied ? (
-                <Check className="h-4 w-4 mr-1" />
-              ) : (
-                <Copy className="h-4 w-4 mr-1" />
-              )}
-              {copied ? "Copié" : "Copier"}
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(getTextContent())}
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                title="Copier la réponse"
+              >
+                <AnimatePresence mode="wait">
+                  {copied ? (
+                    <motion.div
+                      key="check"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: 180 }}
+                      transition={{ duration: 0.3, type: "spring" }}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="copy"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {copied ? "Copié" : "Copier"}
+              </Button>
+            </motion.div>
             {searchResults && searchResults.length > 0 && (
-              <SourcesButton sources={searchResults} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.7, duration: 0.3 }}
+              >
+                <SourcesButton sources={searchResults} />
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
