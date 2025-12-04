@@ -110,27 +110,6 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
   const isUser = role === "user";
   const [isSpeaking, setIsSpeaking] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  const [displayedContent, setDisplayedContent] = React.useState("");
-  const [isTyping, setIsTyping] = React.useState(!isUser);
-
-  // Typing animation effect
-  React.useEffect(() => {
-    if (!isUser && isTyping) {
-      const fullText = getTextContent();
-      let index = 0;
-      const interval = setInterval(() => {
-        if (index < fullText.length) {
-          setDisplayedContent(fullText.slice(0, index + 1));
-          index++;
-        } else {
-          setIsTyping(false);
-          clearInterval(interval);
-        }
-      }, 20); // Adjust speed here (milliseconds per character)
-
-      return () => clearInterval(interval);
-    }
-  }, [isUser, isTyping, content]);
 
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -233,7 +212,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
   };
 
   const formatContent = () => {
-    const contentToRender = isUser ? getTextContent() : (displayedContent || getTextContent());
+    const contentToRender = getTextContent();
 
     if (typeof content === "string") {
       return (
@@ -270,8 +249,6 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       <div className="space-y-2">
         {content.map((part, index) => {
           if (part.type === "text" && part.text) {
-            // For text parts, show partial content during typing
-            const textToShow = isUser ? part.text : (displayedContent ? displayedContent.slice(0, part.text.length) : part.text);
             return (
               <div key={index} className="prose prose-sm max-w-none prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
                 <ReactMarkdown
@@ -295,24 +272,20 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
                     },
                   }}
                 >
-                  {textToShow}
+                  {part.text}
                 </ReactMarkdown>
               </div>
             );
           }
           if (part.type === "image_url" && part.image_url?.url) {
-            // Show images instantly once their text is typed
-            const fullText = getTextContent();
-            const textUpToImage = content.slice(0, index + 1).filter(p => p.type === "text").map(p => p.text).join(" ");
-            const shouldShowImage = isUser || displayedContent.length >= textUpToImage.length;
-            return shouldShowImage ? (
+            return (
               <img
                 key={index}
                 src={part.image_url.url}
                 alt="Image téléversée"
                 className="max-w-full rounded-lg"
               />
-            ) : null;
+            );
           }
           return null;
         })}
@@ -342,7 +315,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       </div>
       <div className="flex-1 space-y-2">
         {formatContent()}
-        {!isUser && !isTyping && (
+        {!isUser && (
           <div className="flex items-center gap-2 mt-2">
             <Button
               variant="ghost"
