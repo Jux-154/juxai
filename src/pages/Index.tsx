@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
-import { MobileSidebarToggle } from "@/components/MobileSidebarToggle";
+import { SidebarToggle } from "@/components/SidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
 import { PauseNotice } from "@/components/PauseNotice";
@@ -505,18 +505,18 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background relative overflow-hidden">
-      <MobileSidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+      <SidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-[999] transition-opacity"
+          className="fixed inset-0 bg-black/50 z-[999] transition-opacity"
           onClick={closeSidebar}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`w-64 sm:w-72 md:w-80 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 md:relative md:translate-x-0 fixed top-0 left-0 h-screen z-[1000] ${
+      <div className={`w-64 sm:w-72 md:w-80 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 fixed top-0 left-0 h-screen z-[1000] ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
         <div className="p-4 border-b border-sidebar-border">
