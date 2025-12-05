@@ -32,29 +32,29 @@ export const DownloadModal = ({ isOpen, onClose }: DownloadModalProps) => {
           </div>
 
           <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-            Découvrez tous les services Jux
+            Découvrez Qwen/Qwen3-VL-30B
           </h2>
 
           <div className="w-16 h-1 bg-gradient-to-r from-[#488aec] to-[#3a7bd5] rounded-full mx-auto mb-6"></div>
 
           <p className="text-gray-300 mb-8 max-w-sm mx-auto leading-relaxed">
-            Téléchargez notre application mobile pour découvrir tous les autres services de Jux.
-            <span className="block mt-2 font-semibold text-[#488aec]">Disponible uniquement sur Android.</span>
+            Le modèle Qwen3-VL-30B est un modèle multimodal avancé développé par Alibaba Cloud, capable de traiter et générer du contenu visuel et textuel avec une précision exceptionnelle.
+            <span className="block mt-2 font-semibold text-[#488aec]">Idéal pour la génération d'images, de vidéos et de texte assisté par IA.</span>
           </p>
 
           <button
-            onClick={() => window.open("https://jux-androidversion.netlify.app", "_blank")}
+            onClick={() => window.open("https://huggingface.co/Qwen/Qwen3-VL-30B", "_blank")}
             className="group relative bg-gradient-to-r from-[#488aec] to-[#3a7bd5] hover:from-[#3a7bd5] hover:to-[#2c5aa0] text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-[#488aec]/25 transform hover:scale-105 active:scale-95"
           >
             <span className="flex items-center gap-2">
-              Télécharger l'application
+              Explorer le modèle
               <Smartphone className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </span>
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#488aec] to-[#3a7bd5] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
           </button>
 
           <p className="text-xs text-gray-400 mt-4">
-            App gratuite • Téléchargement rapide • Interface intuitive
+            Modèle open-source • Haute performance • Multimodal
           </p>
         </div>
       </div>

@@ -6,7 +6,7 @@ import { SidebarToggle } from "@/components/SidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
 import { PauseNotice } from "@/components/PauseNotice";
-import { DownloadModal } from "@/components/DownloadModal";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,7 +52,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const currentRequestIdRef = useRef<string | null>(null);
   const shouldStopRef = useRef(false);
 
@@ -678,7 +678,7 @@ const Index = () => {
       </div>
 
 
-      <DownloadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
     </div>
   );
 };
