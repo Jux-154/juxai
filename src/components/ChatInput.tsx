@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle } from "lucide-react";
+import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -23,11 +23,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface ChatInputProps {
   onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
+  onStop?: () => void;
   isLoading: boolean;
   isWebView?: boolean;
 }
 
-export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputProps) => {
+export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -315,21 +316,32 @@ export const ChatInput = ({ onSend, isLoading, isWebView = false }: ChatInputPro
             </Button>
           )}
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={(!input.trim() && !imageBase64) || isLoading}
-          className={cn(
-            "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-            "bg-primary text-background hover:bg-primary/90 hover:scale-105"
-          )}
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-          ) : (
+        {isLoading ? (
+          <Button
+            type="button"
+            size="icon"
+            onClick={onStop}
+            className={cn(
+              "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105"
+            )}
+            title="Arrêter la génération"
+          >
+            <Square className="h-4 w-4 sm:h-5 sm:w-5 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() && !imageBase64}
+            className={cn(
+              "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
+              "bg-primary text-background hover:bg-primary/90 hover:scale-105"
+            )}
+          >
             <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-          )}
-        </Button>
+          </Button>
+        )}
       </div>
 
       {/* Beta Warning Dialog */}

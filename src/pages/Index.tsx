@@ -53,6 +53,8 @@ const Index = () => {
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const currentRequestIdRef = useRef<string | null>(null);
+  const shouldStopRef = useRef(false);
 
   const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
   const { toast } = useToast();
@@ -169,6 +171,29 @@ const Index = () => {
     });
   };
 
+  const handleStopGeneration = async () => {
+    shouldStopRef.current = true;
+    
+    // Mettre à jour le status dans Supabase pour arrêter le streaming côté serveur
+    if (currentRequestIdRef.current) {
+      try {
+        await supabase
+          .from("requests")
+          .update({ status: "cancelled" })
+          .eq("id", currentRequestIdRef.current);
+      } catch (error) {
+        console.error("Erreur lors de l'arrêt:", error);
+      }
+    }
+    
+    setIsLoading(false);
+    setIsConversationLoading(false);
+    toast({
+      title: "Génération arrêtée",
+      description: "La génération a été interrompue",
+    });
+  };
+
   const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean, generateImage?: boolean) => {
     if (!currentConversationId) return;
 
@@ -208,6 +233,7 @@ const Index = () => {
 
     setIsLoading(true);
     setIsConversationLoading(true);
+    shouldStopRef.current = false;
 
     try {
       // Si on génère une image, on ne passe pas par Supabase/LM Studio
@@ -299,6 +325,7 @@ const Index = () => {
       if (insertError) throw insertError;
 
       const requestId = insertData.id;
+      currentRequestIdRef.current = requestId;
       console.log("Requête insérée:", requestId);
 
       // Poller pour la réponse avec streaming en temps réel
@@ -309,6 +336,11 @@ const Index = () => {
       let currentMessages = [...updatedMessages]; // Track messages locally
 
       while (true) {
+        // Vérifier si l'utilisateur a demandé l'arrêt
+        if (shouldStopRef.current) {
+          break;
+        }
+        
         // Polling plus rapide pendant le streaming (80ms), sinon 400ms
         await new Promise((resolve) => setTimeout(resolve, isStreaming ? 80 : 400));
 
@@ -449,6 +481,8 @@ const Index = () => {
           break;
         } else if (pollData.status === "error") {
           throw new Error(pollData.response || "Erreur inconnue");
+        } else if (pollData.status === "cancelled") {
+          break;
         }
       }
 
@@ -467,6 +501,8 @@ const Index = () => {
     } finally {
       setIsLoading(false);
       setIsConversationLoading(false);
+      currentRequestIdRef.current = null;
+      shouldStopRef.current = false;
     }
   };
 
@@ -636,7 +672,7 @@ const Index = () => {
         {/* Input Area */}
         <div className="border-t border-border bg-background">
           <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
-            <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+            <ChatInput onSend={handleSendMessage} onStop={handleStopGeneration} isLoading={isLoading} />
           </div>
         </div>
       </div>
