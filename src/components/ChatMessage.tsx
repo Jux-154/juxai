@@ -9,7 +9,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { SourcesButton } from "./SourcesButton";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTypewriter, messageVariants, buttonVariants } from "@/lib/animations";
+import { buttonVariants } from "@/lib/animations";
 
 // Custom component for code blocks with copy button
 const CodeBlockWithCopy = ({ children, language, ...props }: any) => {
@@ -303,10 +303,10 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
 
   return (
     <motion.div
-      variants={messageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className="flex gap-4"
     >
       <motion.div
