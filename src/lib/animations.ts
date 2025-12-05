@@ -1,11 +1,12 @@
 // Advanced Animation Utilities for JuxAI
+import { useState, useEffect, useRef, RefObject } from 'react';
 
 // Typewriter effect hook
 export const useTypewriter = (text: string, speed: number = 50) => {
-  const [displayText, setDisplayText] = React.useState('');
-  const [isComplete, setIsComplete] = React.useState(false);
+  const [displayText, setDisplayText] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!text) return;
 
     let i = 0;
@@ -27,9 +28,9 @@ export const useTypewriter = (text: string, speed: number = 50) => {
 
 // Stagger animation hook
 export const useStaggerAnimation = (items: any[], delay: number = 100) => {
-  const [animatedItems, setAnimatedItems] = React.useState<any[]>([]);
+  const [animatedItems, setAnimatedItems] = useState<any[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setAnimatedItems(items);
     }, delay);
@@ -204,10 +205,10 @@ export const loadingDotVariants = {
 };
 
 // Intersection Observer hook for scroll animations
-export const useIntersectionObserver = (ref: React.RefObject<Element>, options = {}) => {
-  const [isIntersecting, setIsIntersecting] = React.useState(false);
+export const useIntersectionObserver = (ref: RefObject<Element>, options = {}) => {
+  const [isIntersecting, setIsIntersecting] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsIntersecting(entry.isIntersecting);

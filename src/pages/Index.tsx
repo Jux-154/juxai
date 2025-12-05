@@ -303,14 +303,14 @@ const Index = () => {
 
       // Poller pour la réponse avec streaming en temps réel
       let response = "";
-      let attempts = 0;
       let streamingMessageId = (Date.now() + 1).toString();
       let isStreaming = false;
       let lastResponse = "";
+      let currentMessages = [...updatedMessages]; // Track messages locally
 
       while (true) {
-        // Polling plus rapide pendant le streaming (100ms), sinon 500ms
-        await new Promise((resolve) => setTimeout(resolve, isStreaming ? 100 : 500));
+        // Polling plus rapide pendant le streaming (80ms), sinon 400ms
+        await new Promise((resolve) => setTimeout(resolve, isStreaming ? 80 : 400));
 
         const { data: pollData, error: pollError } = await supabase
           .from("requests")
@@ -321,7 +321,7 @@ const Index = () => {
         if (pollError) throw pollError;
 
         // Gérer le streaming en temps réel
-        if (pollData.status === "streaming" && pollData.response) {
+        if ((pollData.status === "streaming" || pollData.status === "pending") && pollData.response) {
           isStreaming = true;
           const currentResponse = pollData.response;
           
@@ -337,29 +337,23 @@ const Index = () => {
               timestamp: Date.now(),
             };
 
-            // Mettre à jour la conversation avec le message en cours
-            const currentConv = conversations.find(c => c.id === currentConversationId);
-            if (currentConv) {
-              const existingAssistantIndex = updatedMessages.findIndex(
-                m => m.id === streamingMessageId
-              );
-              
-              let newMessages;
-              if (existingAssistantIndex >= 0) {
-                newMessages = [...updatedMessages];
-                newMessages[existingAssistantIndex] = streamingMessage;
-              } else {
-                newMessages = [...updatedMessages, streamingMessage];
-              }
-              
-              updateConversation(currentConversationId, { messages: newMessages });
-              
-              // Auto-scroll pendant le streaming
-              if (scrollAreaRef.current) {
-                const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-                if (scrollContainer) {
-                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-                }
+            // Trouver si le message assistant existe déjà
+            const existingIndex = currentMessages.findIndex(m => m.id === streamingMessageId);
+            
+            if (existingIndex >= 0) {
+              currentMessages[existingIndex] = streamingMessage;
+            } else {
+              currentMessages = [...currentMessages, streamingMessage];
+            }
+            
+            // Mettre à jour immédiatement la conversation
+            updateConversation(currentConversationId, { messages: [...currentMessages] });
+            
+            // Auto-scroll pendant le streaming
+            if (scrollAreaRef.current) {
+              const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+              if (scrollContainer) {
+                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
               }
             }
           }
@@ -405,49 +399,41 @@ const Index = () => {
             searchResults: searchResults,
           };
 
-          // Mettre à jour la conversation avec le titre et les messages finaux
-          const currentConv = conversations.find(c => c.id === currentConversationId);
-          if (currentConv) {
-            const existingAssistantIndex = updatedMessages.findIndex(
-              m => m.id === streamingMessageId
-            );
-            
-            let finalMessages;
-            if (existingAssistantIndex >= 0) {
-              finalMessages = [...updatedMessages];
-              finalMessages[existingAssistantIndex] = assistantMessage;
-            } else {
-              finalMessages = [...updatedMessages, assistantMessage];
-            }
+          // Mettre à jour les messages finaux
+          const existingIndex = currentMessages.findIndex(m => m.id === streamingMessageId);
+          if (existingIndex >= 0) {
+            currentMessages[existingIndex] = assistantMessage;
+          } else {
+            currentMessages = [...currentMessages, assistantMessage];
+          }
 
-            const updates: Partial<Conversation> = {
-              messages: finalMessages,
-            };
+          const updates: Partial<Conversation> = {
+            messages: [...currentMessages],
+          };
 
-            if (conversationTitle) {
-              if (titleAnimationState === 'waiting') {
-                setTitleAnimationState('completing');
-                updates.title = conversationTitle;
-                updateConversation(currentConversationId, updates);
-                setTimeout(() => {
-                  setTitleAnimationState('removing');
-                  setTimeout(() => {
-                    setTitleAnimationState('arriving');
-                    setTimeout(() => setTitleAnimationState('idle'), 500);
-                  }, 300);
-                }, 500);
-              } else {
+          if (conversationTitle) {
+            if (titleAnimationState === 'waiting') {
+              setTitleAnimationState('completing');
+              updates.title = conversationTitle;
+              updateConversation(currentConversationId, updates);
+              setTimeout(() => {
                 setTitleAnimationState('removing');
                 setTimeout(() => {
-                  updates.title = conversationTitle;
-                  updateConversation(currentConversationId, updates);
                   setTitleAnimationState('arriving');
                   setTimeout(() => setTitleAnimationState('idle'), 500);
                 }, 300);
-              }
+              }, 500);
             } else {
-              updateConversation(currentConversationId, updates);
+              setTitleAnimationState('removing');
+              setTimeout(() => {
+                updates.title = conversationTitle;
+                updateConversation(currentConversationId, updates);
+                setTitleAnimationState('arriving');
+                setTimeout(() => setTitleAnimationState('idle'), 500);
+              }, 300);
             }
+          } else {
+            updateConversation(currentConversationId, updates);
           }
 
           // Auto-scroll final
@@ -464,8 +450,6 @@ const Index = () => {
         } else if (pollData.status === "error") {
           throw new Error(pollData.response || "Erreur inconnue");
         }
-
-        attempts++;
       }
 
     } catch (error: any) {
