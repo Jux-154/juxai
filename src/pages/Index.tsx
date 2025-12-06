@@ -259,6 +259,42 @@ const Index = () => {
       }
 
       // Pour les autres cas (chat normal ou import document), continuer avec Supabase
+      // Récupérer les paramètres de personnalisation
+      let personalizationContext = "";
+      const savedPersonalization = localStorage.getItem("juxPersonalization");
+      if (savedPersonalization) {
+        try {
+          const settings = JSON.parse(savedPersonalization);
+          const parts: string[] = [];
+          
+          if (settings.userName) {
+            parts.push(`L'utilisateur s'appelle "${settings.userName}". Utilise ce nom pour t'adresser à lui.`);
+          }
+          if (settings.userInfo) {
+            parts.push(`Informations sur l'utilisateur : ${settings.userInfo}`);
+          }
+          if (settings.responseStyle && settings.responseStyle !== "default") {
+            const styleDescriptions: Record<string, string> = {
+              "concis": "Réponds de manière concise, courte et directe. Va droit au but.",
+              "socratique": "Guide l'utilisateur avec des questions d'exploration plutôt que des réponses directes.",
+              "formel": "Utilise un ton académique et professionnel dans tes réponses."
+            };
+            if (styleDescriptions[settings.responseStyle]) {
+              parts.push(styleDescriptions[settings.responseStyle]);
+            }
+          }
+          if (settings.customInstruction) {
+            parts.push(`Instructions personnalisées : ${settings.customInstruction}`);
+          }
+          
+          if (parts.length > 0) {
+            personalizationContext = "=== PERSONNALISATION ===\n" + parts.join("\n") + "\n=== FIN PERSONNALISATION ===\n\n";
+          }
+        } catch (e) {
+          console.error("Erreur lecture personnalisation:", e);
+        }
+      }
+
       // Construire l'historique de conversation (derniers 20 messages)
       const historyMessages = conv.messages.slice(-20); // Prendre les 20 derniers messages avant le nouveau
       let conversationHistory = "";
@@ -283,11 +319,11 @@ const Index = () => {
         conversationHistory += "Nouvelle question :\n";
       }
 
-      // Préparer le prompt pour Supabase avec historique
+      // Préparer le prompt pour Supabase avec personnalisation et historique
       const currentPrompt = imageBase64
         ? `${content} [Image: ${imageBase64}]`
         : content;
-      const fullPrompt = conversationHistory + currentPrompt;
+      const fullPrompt = personalizationContext + conversationHistory + currentPrompt;
 
       // Insérer la requête dans la table requests
       const { data: insertData, error: insertError } = await supabase
