@@ -17,6 +17,27 @@ const App = () => {
     // Simulate loading time for components
     const timer = setTimeout(() => {
       setIsLoading(false);
+
+      // Check for automatic fullscreen after loading completes
+      const autoFullscreenEnabled = localStorage.getItem("autoFullscreenEnabled");
+      if (autoFullscreenEnabled && JSON.parse(autoFullscreenEnabled)) {
+        const requestFullscreen = async () => {
+          try {
+            if (document.documentElement.requestFullscreen) {
+              await document.documentElement.requestFullscreen();
+            } else if ((document.documentElement as any).webkitRequestFullscreen) {
+              await (document.documentElement as any).webkitRequestFullscreen();
+            } else if ((document.documentElement as any).mozRequestFullScreen) {
+              await (document.documentElement as any).mozRequestFullScreen();
+            } else if ((document.documentElement as any).msRequestFullscreen) {
+              await (document.documentElement as any).msRequestFullscreen();
+            }
+          } catch (error) {
+            console.log("Automatic fullscreen request failed:", error);
+          }
+        };
+        requestFullscreen();
+      }
     }, 3500); // 5 seconds loading
 
     return () => clearTimeout(timer);

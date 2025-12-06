@@ -6,6 +6,7 @@ import { SidebarToggle } from "@/components/SidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
 import { VersionCard } from "@/components/VersionCard";
 import { PauseNotice } from "@/components/PauseNotice";
+import { Settings } from "@/components/Settings";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -62,26 +63,6 @@ const Index = () => {
 
   useEffect(() => {
     loadConversations();
-
-    // Request fullscreen on page load
-    const requestFullscreen = async () => {
-      try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if ((document.documentElement as any).webkitRequestFullscreen) {
-          await (document.documentElement as any).webkitRequestFullscreen();
-        } else if ((document.documentElement as any).mozRequestFullScreen) {
-          await (document.documentElement as any).mozRequestFullScreen();
-        } else if ((document.documentElement as any).msRequestFullscreen) {
-          await (document.documentElement as any).msRequestFullscreen();
-        }
-      } catch (error) {
-        console.log("Fullscreen request failed:", error);
-      }
-    };
-
-    // Small delay to ensure DOM is ready
-    setTimeout(requestFullscreen, 100);
   }, []);
 
   const loadConversations = () => {
@@ -548,6 +529,9 @@ const Index = () => {
             ))}
           </div>
         </ScrollArea>
+        <div className="p-4 border-t border-sidebar-border">
+          <Settings />
+        </div>
       </div>
 
       {/* Main Chat */}
