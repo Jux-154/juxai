@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, Globe, Plus, Mic, MicOff, AlertTriangle, Square } from "lucide-react";
+import { Send, Loader2, Image, X, FileText, Plus, Mic, MicOff, AlertTriangle, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -32,31 +32,28 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [useWebSearch, setUseWebSearch] = useState(false);
-  const [mode, setMode] = useState<"none" | "image" | "web">("none");
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
+  const [useDocumentImport, setUseDocumentImport] = useState(false);
+  const [mode, setMode] = useState<"none" | "image" | "document">("none");
   const [isRecording, setIsRecording] = useState(false);
-  const [showBetaWarning, setShowBetaWarning] = useState(false);
-  const [dismissBetaWarning, setDismissBetaWarning] = useState(false);
-  const [doNotShowAgain, setDoNotShowAgain] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check if beta warning should be shown
-  useEffect(() => {
-    const dismissed = localStorage.getItem("betaWarningDismissed");
-    setDismissBetaWarning(dismissed === "true");
-  }, []);
+
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if ((input.trim() || imageBase64) && !isLoading) {
-      onSend(input.trim(), imageBase64 || undefined, useWebSearch);
+    if ((input.trim() || imageBase64 || documentFiles.length > 0) && !isLoading) {
+      onSend(input.trim(), imageBase64 || undefined, useDocumentImport);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
+      setDocumentFiles([]);
       setMode("none");
-      setUseWebSearch(false);
+      setUseDocumentImport(false);
     }
   };
 
@@ -69,9 +66,9 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
       return;
     }
 
-    // If web search is enabled, disable it when uploading image
-    if (useWebSearch) {
-      setUseWebSearch(false);
+    // If document import is enabled, disable it when uploading image
+    if (useDocumentImport) {
+      setUseDocumentImport(false);
     }
 
     const reader = new FileReader();
@@ -116,6 +113,51 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
   const removeImage = () => {
     setImagePreview(null);
     setImageBase64(null);
+  };
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate file types
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'text/csv'
+    ];
+
+    const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
+    if (invalidFiles.length > 0) {
+      alert("Formats acceptés: PDF, DOCX, TXT, CSV");
+      return;
+    }
+
+    // Check total size (30MB)
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > 30 * 1024 * 1024) {
+      alert("La taille totale ne doit pas dépasser 30MB");
+      return;
+    }
+
+    // If image is uploaded, disable it when uploading documents
+    if (imageBase64) {
+      setImagePreview(null);
+      setImageBase64(null);
+    }
+
+    setDocumentFiles(files);
+    setUseDocumentImport(true);
+    setMode("document");
+
+    if (documentInputRef.current) {
+      documentInputRef.current.value = "";
+    }
+  };
+
+  const removeDocuments = () => {
+    setDocumentFiles([]);
+    setUseDocumentImport(false);
   };
 
   const startVoiceRecording = () => {
@@ -206,6 +248,34 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
             </div>
           </div>
         )}
+        {documentFiles.length > 0 && (
+          <div className="absolute bottom-full left-0 mb-2 p-2 bg-card rounded-lg border shadow-lg max-w-[300px]">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {documentFiles.length} document{documentFiles.length > 1 ? 's' : ''} sélectionné{documentFiles.length > 1 ? 's' : ''}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                className="h-6 w-6 rounded-full ml-auto"
+                onClick={removeDocuments}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="space-y-1 max-h-[100px] overflow-y-auto">
+              {documentFiles.map((file, index) => (
+                <div key={index} className="text-xs text-muted-foreground flex items-center gap-2">
+                  <FileText className="h-3 w-3" />
+                  <span className="truncate">{file.name}</span>
+                  <span>({Math.round(file.size / 1024)}KB)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -213,15 +283,23 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
           className="hidden"
           onChange={handleImageUpload}
         />
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept=".pdf,.docx,.txt,.csv"
+          multiple
+          className="hidden"
+          onChange={handleDocumentUpload}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               size="icon"
-              variant={(imageBase64 || useWebSearch) ? "default" : "outline"}
+              variant={(imageBase64 || useDocumentImport) ? "default" : "outline"}
               className={cn(
                 "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-                (imageBase64 || useWebSearch)
+                (imageBase64 || useDocumentImport)
                   ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
                   : "bg-card border-border hover:bg-accent hover:border-primary"
               )}
@@ -237,34 +315,22 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
                 fileInputRef.current?.click();
                 setMode("image");
               }}
-              className={cn("flex items-center gap-2", useWebSearch && "opacity-50 cursor-not-allowed")}
-              disabled={useWebSearch}
+              className={cn("flex items-center gap-2", useDocumentImport && "opacity-50 cursor-not-allowed")}
+              disabled={useDocumentImport}
             >
               <Image className="h-4 w-4" />
               Ajouter une image
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                // Show beta warning if not dismissed
-                if (!dismissBetaWarning) {
-                  setShowBetaWarning(true);
-                  setDoNotShowAgain(false); // Reset checkbox state
-                  return;
-                }
-                // If image is uploaded, disable it when enabling web search
-                if (imageBase64) {
-                  setImagePreview(null);
-                  setImageBase64(null);
-                }
-                setUseWebSearch(!useWebSearch);
-                setMode(useWebSearch ? "none" : "web");
+                documentInputRef.current?.click();
+                setMode("document");
               }}
               className={cn("flex items-center gap-2", imageBase64 && "opacity-50 cursor-not-allowed")}
               disabled={!!imageBase64}
             >
-              <Globe className="h-4 w-4" />
-              {useWebSearch ? "Désactiver" : "Activer"} recherche web
-              <span className="ml-1 text-[10px] bg-red-500 text-white px-0.5 py-0.5 rounded">Beta</span>
+              <FileText className="h-4 w-4" />
+              Importer un document
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -344,57 +410,7 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
         )}
       </div>
 
-      {/* Beta Warning Dialog */}
-      <AlertDialog open={showBetaWarning} onOpenChange={setShowBetaWarning}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Fonctionnalité en Beta
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              La recherche web est actuellement en phase bêta. Elle peut parfois générer des réponses inexactes ou incomplètes.
-              Nous travaillons à améliorer cette fonctionnalité.
-              <div className="flex items-center space-x-2 mt-4">
-                <Checkbox
-                  id="doNotShowAgain"
-                  checked={doNotShowAgain}
-                  onCheckedChange={(checked) => setDoNotShowAgain(checked as boolean)}
-                />
-                <label
-                  htmlFor="doNotShowAgain"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Ne plus afficher ce message
-                </label>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowBetaWarning(false)}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowBetaWarning(false);
-                if (doNotShowAgain) {
-                  setDismissBetaWarning(true);
-                  localStorage.setItem("betaWarningDismissed", "true");
-                }
-                // If image is uploaded, disable it when enabling web search
-                if (imageBase64) {
-                  setImagePreview(null);
-                  setImageBase64(null);
-                }
-                setUseWebSearch(true);
-                setMode("web");
-              }}
-            >
-              Activer quand même
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </form>
   );
 };

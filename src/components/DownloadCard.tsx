@@ -6,14 +6,14 @@ export const DownloadCard = () => {
     }}>
       <span className="text-sm font-semibold" style={{ color: '#488aec' }}>Nouveau modèle disponible !</span>
       <h3 className="text-white text-[26px] font-semibold leading-[26px] my-2">
-        Qwen3-VL-30B : Modèle multimodal avancé.
+        Gemma-3-4b : Modèle multimodal avancé.
       </h3>
       <p className="text-[13px] font-semibold mb-3" style={{ color: 'rgb(151 153 167)' }}>
-        Découvrez le modèle Qwen3-VL-30B pour la génération de contenu et textuel par IA. Il analyse aussi les images.
+        Découvrez le modèle Gemma-3-4b pour la génération de contenu textuel par IA. Il analyse aussi les images.
       </p>
       <div className="flex items-center justify-center gap-2.5 mt-2.5">
         <button
-          onClick={() => window.open("https://qwen.ai/blog?id=99f0335c4ad9ff6153e517418d48535ab6d8afef&from=research.latest-advancements-list", "_blank")}
+          onClick={() => window.open("https://ai.google.dev/gemma/docs/core?hl=fr", "_blank")}
           className="flex items-center justify-between rounded-[10px] px-3 py-1.5 cursor-pointer hover:opacity-80 transition-opacity"
           style={{
             backgroundColor: '#488aec',

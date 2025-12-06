@@ -277,7 +277,7 @@ const Index = () => {
         return; // Sortir de la fonction, pas besoin d'aller plus loin
       }
 
-      // Pour les autres cas (chat normal ou recherche web), continuer avec Supabase
+      // Pour les autres cas (chat normal ou import document), continuer avec Supabase
       // Construire l'historique de conversation (derniers 20 messages)
       const historyMessages = conv.messages.slice(-20); // Prendre les 20 derniers messages avant le nouveau
       let conversationHistory = "";
@@ -316,7 +316,7 @@ const Index = () => {
             prompt: fullPrompt,
             imput_message: { text: content },
             status: "pending",
-            use_web_search: useWebSearch || false,
+            use_web_search: useDocumentImport || false,
           },
         ])
         .select()
@@ -409,16 +409,16 @@ const Index = () => {
           }
 
           // Stocker les résultats de recherche si disponibles
-          const searchResults = useWebSearch && pollData.search_results
+          const searchResults = useDocumentImport && pollData.search_results
             ? (pollData.search_results as any).results
             : undefined;
 
-          // Si recherche web, afficher un toast avec les résultats
-          if (useWebSearch && pollData.search_results) {
+          // Si import document, afficher un toast avec les résultats
+          if (useDocumentImport && pollData.search_results) {
             const searchData = pollData.search_results as any;
             toast({
-              title: "Recherche web effectuée",
-              description: `${searchData.count || 0} résultats trouvés`,
+              title: "Import de documents effectué",
+              description: `${searchData.count || 0} documents traités`,
             });
           }
 
