@@ -194,7 +194,7 @@ const Index = () => {
     });
   };
 
-  const handleSendMessage = async (content: string, imageBase64?: string, useWebSearch?: boolean, generateImage?: boolean) => {
+  const handleSendMessage = async (content: string, imageBase64?: string, useDocumentImport?: boolean, generateImage?: boolean, documentContents?: { name: string; type: string; content: string; base64: boolean }[]) => {
     if (!currentConversationId) return;
 
     let userMessage: Message;
@@ -314,9 +314,13 @@ const Index = () => {
         .insert([
           {
             prompt: fullPrompt,
-            imput_message: { text: content },
+            imput_message: { 
+              text: content, 
+              has_documents: useDocumentImport || false,
+              documents: documentContents || []
+            },
             status: "pending",
-            use_web_search: useDocumentImport || false,
+            use_web_search: false,
           },
         ])
         .select()
@@ -409,18 +413,9 @@ const Index = () => {
           }
 
           // Stocker les résultats de recherche si disponibles
-          const searchResults = useDocumentImport && pollData.search_results
+          const searchResults = pollData.search_results
             ? (pollData.search_results as any).results
             : undefined;
-
-          // Si import document, afficher un toast avec les résultats
-          if (useDocumentImport && pollData.search_results) {
-            const searchData = pollData.search_results as any;
-            toast({
-              title: "Import de documents effectué",
-              description: `${searchData.count || 0} documents traités`,
-            });
-          }
 
           // Créer le message assistant final avec les sources
           const assistantMessage: Message = {
@@ -604,7 +599,7 @@ const Index = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.8 }}
                   >
-                    <DownloadCard onDownloadClick={() => setIsModalOpen(true)} />
+                    <DownloadCard />
                   </motion.div>
 
                   <motion.div

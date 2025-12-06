@@ -22,10 +22,17 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface ChatInputProps {
-  onSend: (message: string, imageBase64?: string, useWebSearch?: boolean) => void;
+  onSend: (message: string, imageBase64?: string, useDocumentImport?: boolean, generateImage?: boolean, documentContents?: DocumentContent[]) => void;
   onStop?: () => void;
   isLoading: boolean;
   isWebView?: boolean;
+}
+
+interface DocumentContent {
+  name: string;
+  type: string;
+  content: string;
+  base64: boolean;
 }
 
 export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: ChatInputProps) => {
@@ -44,10 +51,26 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
 
 
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if ((input.trim() || imageBase64 || documentFiles.length > 0) && !isLoading) {
-      onSend(input.trim(), imageBase64 || undefined, useDocumentImport);
+      // Si des documents sont présents, lire leur contenu
+      let docContents: DocumentContent[] | undefined;
+      if (documentFiles.length > 0) {
+        docContents = await Promise.all(
+          documentFiles.map(async (file) => {
+            const content = await readFileAsBase64(file);
+            return {
+              name: file.name,
+              type: file.type,
+              content,
+              base64: true,
+            };
+          })
+        );
+      }
+      
+      onSend(input.trim(), imageBase64 || undefined, useDocumentImport, false, docContents);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
@@ -55,6 +78,20 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
       setMode("none");
       setUseDocumentImport(false);
     }
+  };
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Enlever le préfixe data:...;base64,
+        const base64 = result.split(',')[1] || result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
