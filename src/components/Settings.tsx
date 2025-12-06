@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -46,8 +48,8 @@ export const Settings = () => {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button
           type="button"
           size="icon"
@@ -57,11 +59,12 @@ export const Settings = () => {
         >
           <SettingsIcon className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-96 p-4">
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Personnaliser Jux</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
-          <h3 className="font-semibold text-sm">Personnaliser Jux</h3>
-
           <div className="space-y-2">
             <Label htmlFor="userName" className="text-xs">
               Comment souhaitez-vous que Jux vous appelle ?
@@ -128,7 +131,7 @@ export const Settings = () => {
             />
           </div>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -4,9 +4,9 @@ import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
 import { SidebarToggle } from "@/components/SidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
-import { VersionCard } from "@/components/VersionCard";
 import { PauseNotice } from "@/components/PauseNotice";
 import { Settings } from "@/components/Settings";
+import { Updates } from "@/components/Updates";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +53,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 
   const currentRequestIdRef = useRef<string | null>(null);
   const shouldStopRef = useRef(false);
@@ -565,8 +566,9 @@ const Index = () => {
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border flex items-center">
           <Settings />
+          <Updates />
         </div>
       </div>
 
@@ -622,13 +624,7 @@ const Index = () => {
                     <DownloadCard />
                   </motion.div>
 
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 1.0 }}
-                  >
-                    <VersionCard />
-                  </motion.div>
+
                 </motion.div>
               ) : (
                 <div className="space-y-0">
