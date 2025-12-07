@@ -108,7 +108,7 @@ export const Settings = () => {
               <SelectTrigger className="text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200] bg-popover">
                 <SelectItem value="default">Par défaut - Équilibre pro et convivialité.</SelectItem>
                 <SelectItem value="concis">Concis - Court, direct, au but.</SelectItem>
                 <SelectItem value="socratique">Socratique - Guides avec des questions d'exploration.</SelectItem>
