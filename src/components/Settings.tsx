@@ -11,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PersonalizationSettings {
   userName: string;
@@ -104,17 +103,17 @@ export const Settings = () => {
             <Label htmlFor="responseStyle" className="text-xs">
               Comment souhaitez-vous que Jux réponde ?
             </Label>
-            <Select value={settings.responseStyle} onValueChange={(value) => updateSetting("responseStyle", value)}>
-              <SelectTrigger className="text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[200] bg-popover">
-                <SelectItem value="default">Par défaut - Équilibre pro et convivialité.</SelectItem>
-                <SelectItem value="concis">Concis - Court, direct, au but.</SelectItem>
-                <SelectItem value="socratique">Socratique - Guides avec des questions d'exploration.</SelectItem>
-                <SelectItem value="formel">Formel - Utilise un ton académique ou professionnel.</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              id="responseStyle"
+              value={settings.responseStyle}
+              onChange={(e) => updateSetting("responseStyle", e.target.value)}
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <option value="default">Par défaut - Équilibre pro et convivialité.</option>
+              <option value="concis">Concis - Court, direct, au but.</option>
+              <option value="socratique">Socratique - Guides avec des questions d'exploration.</option>
+              <option value="formel">Formel - Utilise un ton académique ou professionnel.</option>
+            </select>
           </div>
 
           <div className="space-y-2">
