@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
@@ -7,12 +8,14 @@ import { DownloadCard } from "@/components/DownloadCard";
 import { PauseNotice } from "@/components/PauseNotice";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
+import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
 
 import { supabase } from "@/integrations/supabase/client";
+import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Plus, Loader2 } from "lucide-react";
+import { Sparkles, Plus, Loader2, LogOut, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { scaleVariants, slideInVariants, floatingVariants, useIntersectionObserver, staggerContainer } from "@/lib/animations";
 
@@ -47,6 +50,7 @@ interface Conversation {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const showPauseNotice = false; // Set to true to show the pause notice again
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -54,6 +58,11 @@ const Index = () => {
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("liquid/lfm2-1.2b");
 
   const currentRequestIdRef = useRef<string | null>(null);
   const shouldStopRef = useRef(false);
@@ -61,6 +70,47 @@ const Index = () => {
   const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auth effect
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // User is logged in - not a guest
+          setIsGuest(false);
+          localStorage.removeItem("juxGuestMode");
+          // Restore saved model or default to advanced
+          const savedModel = localStorage.getItem("juxSelectedModel");
+          setSelectedModel(savedModel || "google/gemma-3-4b");
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session) {
+        // Check if guest mode
+        const guestMode = localStorage.getItem("juxGuestMode");
+        if (guestMode === "true") {
+          setIsGuest(true);
+          setSelectedModel("liquid/lfm2-1.2b");
+        }
+      } else {
+        setIsGuest(false);
+        const savedModel = localStorage.getItem("juxSelectedModel");
+        setSelectedModel(savedModel || "google/gemma-3-4b");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     loadConversations();
@@ -102,6 +152,25 @@ const Index = () => {
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem("juxSelectedModel", model);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("juxGuestMode");
+    localStorage.removeItem("juxSelectedModel");
+    setUser(null);
+    setSession(null);
+    setIsGuest(false);
+    navigate("/auth");
+  };
+
+  const handleGoToAuth = () => {
+    navigate("/auth");
   };
 
   const getCurrentConversation = () => {
@@ -339,6 +408,7 @@ const Index = () => {
             },
             status: "pending",
             use_web_search: false,
+            model: selectedModel,
           },
         ])
         .select()
@@ -566,9 +636,43 @@ const Index = () => {
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 border-t border-sidebar-border flex items-center">
-          <Settings />
-          <Updates />
+        <div className="p-4 border-t border-sidebar-border space-y-3">
+          {/* Model Selector */}
+          <div className="flex items-center justify-between">
+            <ModelSelector
+              isGuest={isGuest}
+              selectedModel={selectedModel}
+              onModelChange={handleModelChange}
+            />
+          </div>
+          
+          {/* Auth Status & Actions */}
+          <div className="flex items-center gap-2">
+            <Settings />
+            <Updates />
+            <div className="flex-1" />
+            {user ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-xs gap-1"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Déconnexion
+              </Button>
+            ) : isGuest ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGoToAuth}
+                className="text-xs gap-1"
+              >
+                <UserIcon className="h-3.5 w-3.5" />
+                Se connecter
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -683,7 +787,12 @@ const Index = () => {
         {/* Input Area */}
         <div className="border-t border-border bg-background">
           <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
-            <ChatInput onSend={handleSendMessage} onStop={handleStopGeneration} isLoading={isLoading} />
+            <ChatInput 
+              onSend={handleSendMessage} 
+              onStop={handleStopGeneration} 
+              isLoading={isLoading}
+              imageDisabled={!modelSupportsImages(selectedModel)}
+            />
           </div>
         </div>
       </div>

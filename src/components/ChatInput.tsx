@@ -26,6 +26,7 @@ interface ChatInputProps {
   onStop?: () => void;
   isLoading: boolean;
   isWebView?: boolean;
+  imageDisabled?: boolean;
 }
 
 interface DocumentContent {
@@ -35,7 +36,7 @@ interface DocumentContent {
   base64: boolean;
 }
 
-export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: ChatInputProps) => {
+export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageDisabled = false }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -349,14 +350,16 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false }: Chat
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuItem
               onClick={() => {
-                fileInputRef.current?.click();
-                setMode("image");
+                if (!imageDisabled) {
+                  fileInputRef.current?.click();
+                  setMode("image");
+                }
               }}
-              className={cn("flex items-center gap-2", useDocumentImport && "opacity-50 cursor-not-allowed")}
-              disabled={useDocumentImport}
+              className={cn("flex items-center gap-2", (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed")}
+              disabled={useDocumentImport || imageDisabled}
             >
               <Image className="h-4 w-4" />
-              Ajouter une image
+              {imageDisabled ? "Image non disponible" : "Ajouter une image"}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
