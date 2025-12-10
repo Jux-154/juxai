@@ -101,6 +101,9 @@ const Index = () => {
         if (guestMode === "true") {
           setIsGuest(true);
           setSelectedModel("liquid/lfm2-1.2b");
+        } else {
+          // Not logged in and not a guest - redirect to auth
+          navigate("/auth");
         }
       } else {
         setIsGuest(false);
@@ -110,7 +113,7 @@ const Index = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     loadConversations();
