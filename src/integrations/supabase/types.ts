@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           id: string
           imput_message: Json | null
+          model: string | null
           prompt: string
           response: string | null
           search_results: Json | null
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string
           id?: string
           imput_message?: Json | null
+          model?: string | null
           prompt: string
           response?: string | null
           search_results?: Json | null
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           id?: string
           imput_message?: Json | null
+          model?: string | null
           prompt?: string
           response?: string | null
           search_results?: Json | null
