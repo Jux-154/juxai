@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Bot, User, Volume2, StopCircle, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -392,7 +393,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       return (
         <div className="prose prose-sm max-w-none">
           <ReactMarkdown
-            remarkPlugins={[remarkMath]}
+            remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
             components={markdownComponents}
           >
@@ -410,7 +411,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
             return (
               <div key={index} className="prose prose-sm max-w-none">
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
                   components={markdownComponents}
                 >
