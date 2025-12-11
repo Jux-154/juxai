@@ -476,11 +476,14 @@ const Index = () => {
             // Mettre à jour immédiatement la conversation
             updateConversation(currentConversationId, { messages: [...currentMessages] });
             
-            // Auto-scroll pendant le streaming
+            // Auto-scroll pendant le streaming seulement si l'utilisateur est déjà en bas
             if (scrollAreaRef.current) {
               const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
               if (scrollContainer) {
-                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
+                if (isNearBottom) {
+                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                }
               }
             }
           }
@@ -554,12 +557,15 @@ const Index = () => {
             updateConversation(currentConversationId, updates);
           }
 
-          // Auto-scroll final
+          // Auto-scroll final seulement si l'utilisateur est déjà en bas
           setTimeout(() => {
             if (scrollAreaRef.current) {
               const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
               if (scrollContainer) {
-                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
+                if (isNearBottom) {
+                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                }
               }
             }
           }, 100);
