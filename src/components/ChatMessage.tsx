@@ -219,32 +219,182 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       .join(" ");
   };
 
+  // Custom markdown components for better rendering
+  const markdownComponents = {
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || "");
+      return !inline && match ? (
+        <CodeBlockWithCopy
+          language={match[1]}
+          {...props}
+        >
+          {String(children).replace(/\n$/, "")}
+        </CodeBlockWithCopy>
+      ) : (
+        <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
+          {children}
+        </code>
+      );
+    },
+    // Headers with styled badges for numbered sections
+    h1({ children, ...props }: any) {
+      return (
+        <h1 className="text-xl font-bold text-primary mt-6 mb-4 first:mt-0" {...props}>
+          {children}
+        </h1>
+      );
+    },
+    h2({ children, ...props }: any) {
+      // Check if it starts with a number for numbered sections
+      const text = String(children);
+      const numberMatch = text.match(/^(\d+)\s+(.+)$/);
+      if (numberMatch) {
+        return (
+          <h2 className="flex items-center gap-3 text-lg font-semibold text-foreground mt-6 mb-3" {...props}>
+            <span className="flex items-center justify-center w-7 h-7 bg-primary text-primary-foreground rounded text-sm font-bold">
+              {numberMatch[1]}
+            </span>
+            <span>{numberMatch[2]}</span>
+          </h2>
+        );
+      }
+      return (
+        <h2 className="text-lg font-semibold text-foreground mt-6 mb-3" {...props}>
+          {children}
+        </h2>
+      );
+    },
+    h3({ children, ...props }: any) {
+      return (
+        <h3 className="text-base font-semibold text-foreground mt-4 mb-2" {...props}>
+          {children}
+        </h3>
+      );
+    },
+    // Blockquotes with left border accent
+    blockquote({ children, ...props }: any) {
+      return (
+        <blockquote 
+          className="border-l-4 border-primary/50 bg-muted/30 pl-4 py-3 my-4 text-muted-foreground italic rounded-r"
+          {...props}
+        >
+          {children}
+        </blockquote>
+      );
+    },
+    // Tables with clean styling
+    table({ children, ...props }: any) {
+      return (
+        <div className="overflow-x-auto my-4 rounded-lg border border-border">
+          <table className="w-full border-collapse" {...props}>
+            {children}
+          </table>
+        </div>
+      );
+    },
+    thead({ children, ...props }: any) {
+      return (
+        <thead className="bg-muted/50" {...props}>
+          {children}
+        </thead>
+      );
+    },
+    th({ children, ...props }: any) {
+      return (
+        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border" {...props}>
+          {children}
+        </th>
+      );
+    },
+    td({ children, ...props }: any) {
+      return (
+        <td className="px-4 py-3 text-sm text-foreground border-b border-border/50" {...props}>
+          {children}
+        </td>
+      );
+    },
+    tr({ children, ...props }: any) {
+      return (
+        <tr className="hover:bg-muted/20 transition-colors" {...props}>
+          {children}
+        </tr>
+      );
+    },
+    // Lists
+    ul({ children, ...props }: any) {
+      return (
+        <ul className="list-disc list-inside space-y-1 my-2 text-foreground" {...props}>
+          {children}
+        </ul>
+      );
+    },
+    ol({ children, ...props }: any) {
+      return (
+        <ol className="list-decimal list-inside space-y-1 my-2 text-foreground" {...props}>
+          {children}
+        </ol>
+      );
+    },
+    li({ children, ...props }: any) {
+      return (
+        <li className="text-foreground" {...props}>
+          {children}
+        </li>
+      );
+    },
+    // Emphasis and strong
+    strong({ children, ...props }: any) {
+      return (
+        <strong className="font-semibold text-foreground" {...props}>
+          {children}
+        </strong>
+      );
+    },
+    em({ children, ...props }: any) {
+      return (
+        <em className="italic text-primary/90" {...props}>
+          {children}
+        </em>
+      );
+    },
+    // Paragraphs
+    p({ children, ...props }: any) {
+      return (
+        <p className="text-foreground my-2 leading-relaxed" {...props}>
+          {children}
+        </p>
+      );
+    },
+    // Horizontal rule
+    hr({ ...props }: any) {
+      return <hr className="my-4 border-border" {...props} />;
+    },
+    // Links
+    a({ children, href, ...props }: any) {
+      return (
+        <a 
+          href={href} 
+          className="text-primary hover:underline" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+  };
+
   const formatContent = () => {
     const contentToRender = getTextContent();
 
     if (typeof content === "string") {
       return (
-        <div className="prose prose-sm max-w-none prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
+        <div className="prose prose-sm max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkMath]}
             rehypePlugins={[rehypeKatex]}
-            components={{
-              code({ node, inline, className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || "");
-                return !inline && match ? (
-                  <CodeBlockWithCopy
-                    language={match[1]}
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, "")}
-                  </CodeBlockWithCopy>
-                ) : (
-                  <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
+            components={markdownComponents}
           >
             {contentToRender}
           </ReactMarkdown>
@@ -258,27 +408,11 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
         {content.map((part, index) => {
           if (part.type === "text" && part.text) {
             return (
-              <div key={index} className="prose prose-sm max-w-none prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
+              <div key={index} className="prose prose-sm max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeKatex]}
-                  components={{
-                    code({ node, inline, className, children, ...props }: any) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      return !inline && match ? (
-                        <CodeBlockWithCopy
-                          language={match[1]}
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, "")}
-                        </CodeBlockWithCopy>
-                      ) : (
-                        <code className={cn("px-1.5 py-0.5 rounded bg-muted text-primary font-mono text-sm", className)} {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                  }}
+                  components={markdownComponents}
                 >
                   {part.text}
                 </ReactMarkdown>
