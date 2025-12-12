@@ -391,18 +391,6 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
   const formatContent = () => {
     const contentToRender = getTextContent();
 
-    // Animation wrapper for AI text with fade-in effect
-    const TextWrapper = ({ children }: { children: React.ReactNode }) => (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="animate-in fade-in-0 duration-500"
-      >
-        {children}
-      </motion.div>
-    );
-
     if (typeof content === "string") {
       const content_element = (
         <div className="prose prose-sm max-w-none">
@@ -416,7 +404,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
         </div>
       );
       
-      return isUser ? content_element : <TextWrapper>{content_element}</TextWrapper>;
+      return content_element;
     }
 
     // Handle array content (text + image)
@@ -435,7 +423,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
                 </ReactMarkdown>
               </div>
             );
-            return isUser ? textElement : <TextWrapper key={index}>{textElement}</TextWrapper>;
+            return textElement;
           }
           if (part.type === "image_url" && part.image_url?.url) {
             return (
