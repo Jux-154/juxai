@@ -391,8 +391,20 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
   const formatContent = () => {
     const contentToRender = getTextContent();
 
+    // Animation wrapper for AI text with fade-in effect
+    const TextWrapper = ({ children }: { children: React.ReactNode }) => (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="animate-in fade-in-0 duration-500"
+      >
+        {children}
+      </motion.div>
+    );
+
     if (typeof content === "string") {
-      return (
+      const content_element = (
         <div className="prose prose-sm max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
@@ -403,6 +415,8 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
           </ReactMarkdown>
         </div>
       );
+      
+      return isUser ? content_element : <TextWrapper>{content_element}</TextWrapper>;
     }
 
     // Handle array content (text + image)
@@ -410,7 +424,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
       <div className="space-y-2">
         {content.map((part, index) => {
           if (part.type === "text" && part.text) {
-            return (
+            const textElement = (
               <div key={index} className="prose prose-sm max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
@@ -421,6 +435,7 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
                 </ReactMarkdown>
               </div>
             );
+            return isUser ? textElement : <TextWrapper key={index}>{textElement}</TextWrapper>;
           }
           if (part.type === "image_url" && part.image_url?.url) {
             return (

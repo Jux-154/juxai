@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Cpu, ChevronDown, Sparkles, Zap } from "lucide-react";
+import { Cpu, ChevronDown, Sparkles, Zap, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ModelSelectorProps {
@@ -27,6 +27,12 @@ const MODELS = {
     description: "Modèle avancé avec vision",
     icon: Sparkles,
     supportsImages: true,
+  },
+  "openai/gpt-oss-20b": {
+    name: "GPT OSS 20B",
+    description: "Le plus intelligent et puissant",
+    icon: Brain,
+    supportsImages: false,
   },
 };
 
