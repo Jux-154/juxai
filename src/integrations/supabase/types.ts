@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      requests: {
+        Row: {
+          created_at: string
+          id: string
+          imput_message: Json | null
+          model: string | null
+          prompt: string
+          response: string | null
+          search_results: Json | null
+          status: string
+          updated_at: string
+          use_web_search: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imput_message?: Json | null
+          model?: string | null
+          prompt: string
+          response?: string | null
+          search_results?: Json | null
+          status?: string
+          updated_at?: string
+          use_web_search?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imput_message?: Json | null
+          model?: string | null
+          prompt?: string
+          response?: string | null
+          search_results?: Json | null
+          status?: string
+          updated_at?: string
+          use_web_search?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
