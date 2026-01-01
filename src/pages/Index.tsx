@@ -5,7 +5,6 @@ import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
 import { SidebarToggle } from "@/components/SidebarToggle";
 import { DownloadCard } from "@/components/DownloadCard";
-import { PauseNotice } from "@/components/PauseNotice";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
@@ -51,7 +50,6 @@ interface Conversation {
 
 const Index = () => {
   const navigate = useNavigate();
-  const showPauseNotice = false; // Set to true to show the pause notice again
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -721,13 +719,6 @@ const Index = () => {
                     Démarrez une conversation avec le modèle Qwen
                   </motion.p>
 
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.6 }}
-                  >
-                    {showPauseNotice && <PauseNotice />}
-                  </motion.div>
 
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
