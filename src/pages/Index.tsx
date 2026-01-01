@@ -603,47 +603,72 @@ const Index = () => {
       <SidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
       {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[999] transition-opacity"
-          onClick={closeSidebar}
-        />
-      )}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999]"
+            onClick={closeSidebar}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
-      <div className={`w-64 sm:w-72 md:w-80 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 fixed top-0 left-0 h-screen z-[1000] ${
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      }`}>
-        <div className="p-4 border-b border-sidebar-border">
-          <Button
-            onClick={createNewChat}
-            className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold hover:scale-105 transition-all hover:shadow-[var(--shadow-ai)]"
+      <motion.div 
+        className={`w-72 sm:w-80 md:w-[340px] border-r border-sidebar-border/50 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
+      >
+        {/* Sidebar Header */}
+        <div className="p-5 border-b border-sidebar-border/50">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Plus className="h-5 w-5 mr-2" />
-            Nouvelle conversation
-          </Button>
+            <Button
+              onClick={createNewChat}
+              className="w-full h-12 bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-xl glow-button transition-all duration-200"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Nouvelle conversation
+            </Button>
+          </motion.div>
         </div>
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {conversations.map((conv) => (
-              <ConversationItem
+        
+        {/* Conversations List */}
+        <ScrollArea className="flex-1 px-3">
+          <div className="py-3 space-y-1">
+            {conversations.map((conv, index) => (
+              <motion.div
                 key={conv.id}
-                id={conv.id}
-                title={conv.title}
-                isActive={conv.id === currentConversationId}
-                onClick={() => {
-                  setCurrentConversationId(conv.id);
-                  closeSidebar();
-                }}
-                onRename={handleRenameConversation}
-                onDelete={handleDeleteConversation}
-                isMobile={true}
-                animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
-              />
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.03 }}
+              >
+                <ConversationItem
+                  id={conv.id}
+                  title={conv.title}
+                  isActive={conv.id === currentConversationId}
+                  onClick={() => {
+                    setCurrentConversationId(conv.id);
+                    closeSidebar();
+                  }}
+                  onRename={handleRenameConversation}
+                  onDelete={handleDeleteConversation}
+                  isMobile={true}
+                  animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
+                />
+              </motion.div>
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 border-t border-sidebar-border space-y-3">
+        
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-sidebar-border/50 space-y-4 bg-sidebar-background/50 backdrop-blur-sm">
           {/* Model Selector */}
           <div className="flex items-center justify-between">
             <ModelSelector
@@ -654,7 +679,7 @@ const Index = () => {
           </div>
           
           {/* Auth Status & Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2 border-t border-sidebar-border/30">
             <Settings />
             <Updates />
             <div className="flex-1" />
@@ -663,7 +688,7 @@ const Index = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-xs gap-1"
+                className="text-xs gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Déconnexion
@@ -673,7 +698,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleGoToAuth}
-                className="text-xs gap-1"
+                className="text-xs gap-1.5 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
               >
                 <UserIcon className="h-3.5 w-3.5" />
                 Se connecter
@@ -681,27 +706,67 @@ const Index = () => {
             ) : null}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Chat */}
       <div className="flex-1 flex flex-col">
         {/* Chat Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
+          {/* Subtle gradient overlay at top */}
+          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
+          
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
                 <motion.div
-                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4"
+                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4 py-12"
                   variants={staggerContainer}
                   initial="initial"
                   animate="animate"
                 >
+                  {/* Animated background orbs */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <motion.div 
+                      className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl"
+                      animate={{ 
+                        x: [0, 50, 0], 
+                        y: [0, 30, 0],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.div 
+                      className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-secondary/5 rounded-full blur-3xl"
+                      animate={{ 
+                        x: [0, -40, 0], 
+                        y: [0, -20, 0],
+                        scale: [1, 1.15, 1]
+                      }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                    />
+                  </div>
+                  
                   <motion.div
                     variants={slideInVariants.slideInUp}
-                    className="relative"
+                    className="relative z-10"
                   >
+                    {/* Logo */}
+                    <motion.div
+                      className="mb-6 flex justify-center"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-2xl blur-xl opacity-40" />
+                        <div className="relative bg-gradient-to-br from-primary to-secondary p-4 rounded-2xl">
+                          <Sparkles className="h-10 w-10 text-primary-foreground" />
+                        </div>
+                      </div>
+                    </motion.div>
+                    
                     <motion.h1
-                      className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
+                      className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent"
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.8, delay: 0.2 }}
@@ -711,69 +776,76 @@ const Index = () => {
                   </motion.div>
 
                   <motion.p
-                    className="text-muted-foreground max-w-md mb-4"
+                    className="text-muted-foreground max-w-md mb-8 text-lg"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.4 }}
                   >
-                    Démarrez une conversation avec le modèle Qwen
+                    Votre assistant IA intelligent, prêt à vous aider
                   </motion.p>
-
 
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.8 }}
+                    className="relative z-10"
                   >
                     <DownloadCard />
                   </motion.div>
-
-
                 </motion.div>
               ) : (
-                <div className="space-y-0">
-                  {currentMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`px-3 sm:px-6 py-4 sm:py-6 ${
-                        message.role === "user" ? "bg-background" : "bg-card"
-                      }`}
-                    >
-                      <div className="max-w-4xl mx-auto">
-                        <ChatMessage
-                          role={message.role}
-                          content={message.content}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
+                <div className="space-y-0 pb-4">
+                  <AnimatePresence mode="popLayout">
+                    {currentMessages.map((message, index) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index === currentMessages.length - 1 ? 0 : 0 }}
+                        className={`px-4 sm:px-6 py-5 sm:py-6 transition-colors ${
+                          message.role === "user" 
+                            ? "bg-background" 
+                            : "bg-card/50 border-y border-border/30"
+                        }`}
+                      >
+                        <div className="max-w-4xl mx-auto">
+                          <ChatMessage
+                            role={message.role}
+                            content={message.content}
+                          />
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {isLoading && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
                     <motion.div
-                      className="px-3 sm:px-6 py-4 sm:py-6 bg-card"
+                      className="px-4 sm:px-6 py-5 sm:py-6 bg-card/50 border-y border-border/30"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.3 }}
                     >
                       <div className="max-w-4xl mx-auto flex gap-4 items-center">
+                        <div className="relative">
+                          <motion.div
+                            className="absolute inset-0 bg-primary/20 rounded-lg blur-md"
+                            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          />
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="relative"
+                          >
+                            <Loader2 className="h-6 w-6 text-primary" />
+                          </motion.div>
+                        </div>
                         <motion.div
-                          animate={{
-                            rotate: 360,
-                            scale: [1, 1.2, 1]
-                          }}
-                          transition={{
-                            rotate: { duration: 1, repeat: Infinity, ease: "linear" },
-                            scale: { duration: 1, repeat: Infinity, ease: "easeInOut" }
-                          }}
-                        >
-                          <Loader2 className="h-5 w-5 text-primary" />
-                        </motion.div>
-                        <motion.div
-                          className="text-muted-foreground"
-                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          className="text-muted-foreground font-medium"
+                          animate={{ opacity: [0.6, 1, 0.6] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
                         >
-                          En train de réfléchir...
+                          Jux réfléchit...
                         </motion.div>
                       </div>
                     </motion.div>
@@ -785,8 +857,8 @@ const Index = () => {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-border bg-background">
-          <div className="px-2 sm:px-4 py-3 sm:py-5 max-w-4xl mx-auto">
+        <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+          <div className="px-3 sm:px-4 py-4 sm:py-5 max-w-4xl mx-auto">
             <ChatInput 
               onSend={handleSendMessage} 
               onStop={handleStopGeneration} 
@@ -796,9 +868,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-
-
-
     </div>
   );
 };
