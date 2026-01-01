@@ -443,10 +443,10 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="flex gap-4"
     >
       <motion.div
@@ -456,42 +456,42 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
           type: "spring",
           stiffness: 260,
           damping: 20,
-          delay: 0.1
+          delay: 0.05
         }}
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md",
           isUser
-            ? "bg-primary text-background"
-            : "bg-gradient-to-r from-primary to-secondary text-background"
+            ? "bg-gradient-to-br from-primary to-primary/80"
+            : "bg-gradient-to-br from-primary via-primary/90 to-secondary"
         )}
       >
         {isUser ? (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.3, type: "spring", stiffness: 500 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
           >
-            <User className="h-5 w-5" />
+            <User className="h-5 w-5 text-primary-foreground" />
           </motion.div>
         ) : (
           <motion.img
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.3 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
             src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
             alt="Jux"
-            className="w-8 h-8 rounded-lg object-cover"
+            className="w-10 h-10 rounded-xl object-cover"
           />
         )}
       </motion.div>
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-3 pt-1">
         {formatContent()}
         {!isUser && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.3 }}
-            className="flex items-center gap-2 mt-2"
+            transition={{ delay: 0.4, duration: 0.3 }}
+            className="flex items-center gap-1.5 mt-4 pt-3 border-t border-border/30"
           >
             <motion.div
               variants={buttonVariants}

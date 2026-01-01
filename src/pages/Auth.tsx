@@ -73,56 +73,87 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-secondary/5 to-transparent rounded-full blur-3xl" />
+      </div>
+      
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md relative z-10"
       >
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+        <div className="glass-card rounded-3xl p-8 sm:p-10">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <motion.div 
+            className="flex items-center justify-center gap-3 mb-10"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <div className="relative">
+              <motion.div
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl blur-lg opacity-50"
+              />
+              <div className="relative bg-gradient-to-br from-primary to-secondary p-3 rounded-xl">
+                <Sparkles className="h-7 w-7 text-primary-foreground" />
+              </div>
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
               Jux-AI
             </h1>
-          </div>
+          </motion.div>
 
           {/* Title */}
-          <h2 className="text-xl font-semibold text-center mb-6">
-            {isLogin ? "Connexion" : "Créer un compte"}
-          </h2>
+          <motion.h2 
+            className="text-2xl font-semibold text-center mb-8 text-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {isLogin ? "Bon retour !" : "Créer un compte"}
+          </motion.h2>
 
           {/* Auth Form */}
-          <form onSubmit={handleAuth} className="space-y-4">
+          <motion.form 
+            onSubmit={handleAuth} 
+            className="space-y-5"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="email" className="text-sm font-medium text-foreground/80">Email</Label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="votre@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-11 h-12 bg-background/50 border-border/50 rounded-xl transition-all focus:border-primary focus:bg-background input-glow"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="password" className="text-sm font-medium text-foreground/80">Mot de passe</Label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-11 h-12 bg-background/50 border-border/50 rounded-xl transition-all focus:border-primary focus:bg-background input-glow"
                   required
                   minLength={6}
                 />
@@ -131,32 +162,43 @@ const Auth = () => {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-primary to-secondary"
+              className="w-full h-12 bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-xl glow-button hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
               disabled={isLoading}
             >
-              {isLoading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
+              {isLoading ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
+                />
+              ) : (
+                <>
+                  {isLogin ? "Se connecter" : "S'inscrire"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
             </Button>
-          </form>
+          </motion.form>
 
           {/* Toggle Login/Signup */}
-          <p className="text-center text-sm text-muted-foreground mt-4">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline font-medium"
+              className="text-primary hover:text-primary/80 font-semibold transition-colors"
             >
               {isLogin ? "S'inscrire" : "Se connecter"}
             </button>
           </p>
 
           {/* Divider */}
-          <div className="relative my-6">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
+              <div className="w-full border-t border-border/50"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">ou</span>
+              <span className="bg-card/80 backdrop-blur px-4 text-muted-foreground font-medium">ou</span>
             </div>
           </div>
 
@@ -164,16 +206,16 @@ const Auth = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="w-full h-12 rounded-xl border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-all duration-200"
             onClick={handleGuestAccess}
           >
             <User className="h-4 w-4 mr-2" />
             Continuer en tant qu'invité
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <ArrowRight className="h-4 w-4 ml-2 opacity-50" />
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            En mode invité, seul le modèle basique est disponible (sans images).
+          <p className="text-xs text-center text-muted-foreground/70 mt-5">
+            En mode invité, seul le modèle basique est disponible.
           </p>
         </div>
       </motion.div>

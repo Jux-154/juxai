@@ -92,14 +92,14 @@ export const ConversationItem = ({
       onClick={onClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all flex items-center gap-2 group relative ${
+      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all duration-200 flex items-center gap-3 group relative ${
         isActive
-          ? "bg-accent text-accent-foreground border-l-2 border-primary"
-          : "hover:bg-accent/50"
+          ? "bg-gradient-to-r from-primary/15 to-primary/5 text-foreground border-l-3 border-primary shadow-sm"
+          : "hover:bg-accent/40 text-muted-foreground hover:text-foreground"
       }`}
     >
       <div
-        className={`truncate flex-1 transition-all duration-300 ${
+        className={`truncate flex-1 font-medium transition-all duration-300 ${
           animationState === 'removing'
             ? 'animate-pulse opacity-50 transform translate-x-2'
             : animationState === 'completing'
@@ -109,7 +109,7 @@ export const ConversationItem = ({
             : ''
         }`}
       >
-        {title.length > 27 ? `${title.substring(0, 27)}...` : title}
+        {title.length > 28 ? `${title.substring(0, 28)}...` : title}
       </div>
 
       {(animationState === 'waiting' || animationState === 'completing' || animationState === 'removing') && (
@@ -125,19 +125,20 @@ export const ConversationItem = ({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <button className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} p-1 hover:bg-accent rounded transition-opacity`}>
+          <button className={`${isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-70'} p-1.5 hover:bg-accent hover:opacity-100 rounded-lg transition-all`}>
             <MoreVertical className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
               setNewTitle(title);
               setIsRenameDialogOpen(true);
             }}
+            className="gap-2"
           >
-            <Pencil className="h-4 w-4 mr-2" />
+            <Pencil className="h-4 w-4" />
             Renommer
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -145,9 +146,9 @@ export const ConversationItem = ({
               e.stopPropagation();
               setIsDeleteDialogOpen(true);
             }}
-            className="text-destructive focus:text-destructive"
+            className="text-destructive focus:text-destructive gap-2"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
+            <Trash2 className="h-4 w-4" />
             Supprimer
           </DropdownMenuItem>
         </DropdownMenuContent>

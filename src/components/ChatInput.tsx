@@ -336,18 +336,18 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               size="icon"
               variant={(imageBase64 || useDocumentImport) ? "default" : "outline"}
               className={cn(
-                "shrink-0 transition-all h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
+                "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
                 (imageBase64 || useDocumentImport)
-                  ? "bg-primary text-background hover:bg-primary/90 border-primary shadow-[0_0_10px_rgba(0,255,255,0.3)]"
-                  : "bg-card border-border hover:bg-accent hover:border-primary"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 glow-button"
+                  : "bg-card/80 border-border/50 hover:bg-accent hover:border-primary/50"
               )}
               disabled={isLoading}
               title="Options de message"
             >
-              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Plus className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-52 p-2">
             <DropdownMenuItem
               onClick={() => {
                 if (!imageDisabled) {
@@ -355,49 +355,46 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
                   setMode("image");
                 }
               }}
-              className={cn("flex items-center gap-2", (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed")}
+              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed")}
               disabled={useDocumentImport || imageDisabled}
             >
-              <Image className="h-4 w-4" />
-              {imageDisabled ? "Image non disponible" : "Ajouter une image"}
+              <Image className="h-4 w-4 text-primary" />
+              <span>{imageDisabled ? "Image non disponible" : "Ajouter une image"}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 documentInputRef.current?.click();
                 setMode("document");
               }}
-              className={cn("flex items-center gap-2", imageBase64 && "opacity-50 cursor-not-allowed")}
+              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", imageBase64 && "opacity-50 cursor-not-allowed")}
               disabled={!!imageBase64}
             >
-              <FileText className="h-4 w-4" />
-              Importer un document
+              <FileText className="h-4 w-4 text-secondary" />
+              <span>Importer un document</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="relative flex-1">
+        
+        <div className="relative flex-1 group">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Envoyez un message..."
             className={cn(
-              "min-h-[36px] max-h-[100px] h-9 sm:h-11 md:h-12 transition-all text-sm sm:text-base pr-10 resize-none",
-              "bg-card border-border focus:border-primary focus:shadow-[0_0_0_2px_rgba(0,255,255,0.1)]",
-              "focus-visible:ring-0 overflow-y-auto"
+              "min-h-[40px] max-h-[120px] h-10 sm:h-12 transition-all duration-200 text-sm sm:text-base pr-12 resize-none rounded-xl",
+              "bg-card/80 border-border/50 focus:border-primary/50 focus:bg-card",
+              "focus-visible:ring-0 overflow-y-auto input-glow placeholder:text-muted-foreground/60"
             )}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 if (e.shiftKey) {
-                  // Allow new line with Shift+Enter
                   return;
                 } else {
-                  // Submit on Enter (desktop) or if on mobile, allow new line
                   if (window.innerWidth > 768) {
-                    // Desktop: submit on Enter
                     e.preventDefault();
                     handleSubmit(e);
                   }
-                  // Mobile: allow new line on Enter
                 }
               }
             }}
@@ -409,27 +406,31 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               type="button"
               size="icon"
               variant="ghost"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg transition-all",
+                isRecording && "bg-destructive/10 text-destructive"
+              )}
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
               disabled={isLoading}
               title={isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement vocal"}
             >
               {isRecording ? (
-                <MicOff className="h-4 w-4 text-red-500" />
+                <MicOff className="h-4 w-4 animate-pulse" />
               ) : (
-                <Mic className="h-4 w-4" />
+                <Mic className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               )}
             </Button>
           )}
         </div>
+        
         {isLoading ? (
           <Button
             type="button"
             size="icon"
             onClick={onStop}
             className={cn(
-              "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-              "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105"
+              "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105 active:scale-95"
             )}
             title="Arrêter la génération"
           >
@@ -441,16 +442,16 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
             size="icon"
             disabled={!input.trim() && !imageBase64}
             className={cn(
-              "shrink-0 transition-all min-w-[40px] sm:min-w-[50px] md:min-w-[60px] h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12",
-              "bg-primary text-background hover:bg-primary/90 hover:scale-105"
+              "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
+              "bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-secondary",
+              "text-primary-foreground glow-button hover:scale-105 active:scale-95",
+              "disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
             )}
           >
             <Send className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
         )}
       </div>
-
-
     </form>
   );
 };
