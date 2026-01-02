@@ -4,7 +4,7 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
 import { SidebarToggle } from "@/components/SidebarToggle";
-import { DownloadCard } from "@/components/DownloadCard";
+import { CommunityGoal } from "@/components/CommunityGoal";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
@@ -790,7 +790,7 @@ const Index = () => {
                     transition={{ duration: 0.6, delay: 0.8 }}
                     className="relative z-10"
                   >
-                    <DownloadCard />
+                    <CommunityGoal />
                   </motion.div>
                 </motion.div>
               ) : (
