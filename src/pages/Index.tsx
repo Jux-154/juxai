@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ConversationItem } from "@/components/ConversationItem";
@@ -8,13 +8,15 @@ import { CommunityGoal } from "@/components/CommunityGoal";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
+import { NewConversationMenu } from "@/components/NewConversationMenu";
+import { HistorySelector, HistoryType } from "@/components/HistorySelector";
 
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Plus, Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Sparkles, Loader2, LogOut, User as UserIcon, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { scaleVariants, slideInVariants, floatingVariants, useIntersectionObserver, staggerContainer } from "@/lib/animations";
 
@@ -50,6 +52,7 @@ interface Conversation {
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +64,9 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [selectedModel, setSelectedModel] = useState("liquid/lfm2-1.2b");
+  const [userPseudo, setUserPseudo] = useState<string | null>(null);
+  const [historyType, setHistoryType] = useState<HistoryType>('solo');
+  const [multiRooms, setMultiRooms] = useState<any[]>([]);
 
   const currentRequestIdRef = useRef<string | null>(null);
   const shouldStopRef = useRef(false);
@@ -158,6 +164,36 @@ const Index = () => {
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
     localStorage.setItem("juxSelectedModel", model);
+  };
+
+  const handleHistoryTypeChange = async (type: HistoryType) => {
+    setHistoryType(type);
+    if (type === 'multi' && user) {
+      // Fetch user's multi rooms
+      const { data } = await supabase
+        .from('room_members')
+        .select(`
+          room_id,
+          multi_rooms!inner (
+            id,
+            code,
+            is_active,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id);
+      
+      if (data) {
+        const rooms = data
+          .map((d: any) => d.multi_rooms)
+          .filter((r: any) => r.is_active);
+        setMultiRooms(rooms);
+      }
+    }
+  };
+
+  const handlePseudoChange = (pseudo: string | null) => {
+    setUserPseudo(pseudo);
   };
 
   const handleLogout = async () => {
@@ -629,41 +665,94 @@ const Index = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Button
-              onClick={createNewChat}
-              className="w-full h-12 bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-xl glow-button transition-all duration-200"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Nouvelle conversation
-            </Button>
+            <NewConversationMenu
+              onCreateSolo={createNewChat}
+              isAuthenticated={!!user}
+              userPseudo={userPseudo}
+              onNeedPseudo={() => {
+                toast({
+                  title: "Pseudo requis",
+                  description: "Définissez un pseudo dans les paramètres pour créer un salon multi",
+                });
+              }}
+              onNeedAuth={() => {
+                toast({
+                  title: "Connexion requise",
+                  description: "Connectez-vous pour créer un salon multi",
+                });
+                navigate('/auth');
+              }}
+            />
           </motion.div>
+        </div>
+        
+        {/* History Type Selector */}
+        <div className="px-5 pb-3">
+          <HistorySelector 
+            currentType={historyType} 
+            onTypeChange={handleHistoryTypeChange}
+          />
         </div>
         
         {/* Conversations List */}
         <ScrollArea className="flex-1 px-3">
           <div className="py-3 space-y-1">
-            {conversations.map((conv, index) => (
-              <motion.div
-                key={conv.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <ConversationItem
-                  id={conv.id}
-                  title={conv.title}
-                  isActive={conv.id === currentConversationId}
-                  onClick={() => {
-                    setCurrentConversationId(conv.id);
-                    closeSidebar();
-                  }}
-                  onRename={handleRenameConversation}
-                  onDelete={handleDeleteConversation}
-                  isMobile={true}
-                  animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
-                />
-              </motion.div>
-            ))}
+            {historyType === 'solo' ? (
+              conversations.map((conv, index) => (
+                <motion.div
+                  key={conv.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                >
+                  <ConversationItem
+                    id={conv.id}
+                    title={conv.title}
+                    isActive={conv.id === currentConversationId}
+                    onClick={() => {
+                      setCurrentConversationId(conv.id);
+                      closeSidebar();
+                    }}
+                    onRename={handleRenameConversation}
+                    onDelete={handleDeleteConversation}
+                    isMobile={true}
+                    animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
+                  />
+                </motion.div>
+              ))
+            ) : (
+              multiRooms.length > 0 ? (
+                multiRooms.map((room, index) => (
+                  <motion.div
+                    key={room.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 h-auto py-3 px-3"
+                      onClick={() => {
+                        navigate(`/room/${room.code}`);
+                        closeSidebar();
+                      }}
+                    >
+                      <Users className="h-4 w-4 text-secondary" />
+                      <div className="text-left">
+                        <p className="text-sm font-medium">Salon Multi</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(room.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    </Button>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Aucune conversation multi
+                </div>
+              )
+            )}
           </div>
         </ScrollArea>
         
@@ -680,7 +769,7 @@ const Index = () => {
           
           {/* Auth Status & Actions */}
           <div className="flex items-center gap-2 pt-2 border-t border-sidebar-border/30">
-            <Settings />
+            <Settings onPseudoChange={handlePseudoChange} />
             <Updates />
             <div className="flex-1" />
             {user ? (

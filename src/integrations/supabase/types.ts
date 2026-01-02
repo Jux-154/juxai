@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      message_queue: {
+        Row: {
+          created_at: string
+          id: string
+          is_processed: boolean
+          position: number
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_processed?: boolean
+          position: number
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_processed?: boolean
+          position?: number
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_queue_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "multi_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multi_rooms: {
+        Row: {
+          code: string
+          created_at: string
+          current_speaker_id: string | null
+          host_id: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_speaker_id?: string | null
+          host_id: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_speaker_id?: string | null
+          host_id?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          pseudo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pseudo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pseudo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       requests: {
         Row: {
           created_at: string
@@ -52,6 +141,76 @@ export type Database = {
           use_web_search?: boolean | null
         }
         Relationships: []
+      }
+      room_members: {
+        Row: {
+          id: string
+          joined_at: string
+          queue_position: number | null
+          role: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          queue_position?: number | null
+          role?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          queue_position?: number | null
+          role?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "multi_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_ai_response: boolean
+          room_id: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_ai_response?: boolean
+          room_id: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_ai_response?: boolean
+          room_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "multi_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

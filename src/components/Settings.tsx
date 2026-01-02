@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface PersonalizationSettings {
   userName: string;
@@ -19,13 +21,21 @@ interface PersonalizationSettings {
   customInstruction: string;
 }
 
-export const Settings = () => {
+interface SettingsProps {
+  onPseudoChange?: (pseudo: string | null) => void;
+}
+
+export const Settings = ({ onPseudoChange }: SettingsProps) => {
+  const { toast } = useToast();
   const [settings, setSettings] = useState<PersonalizationSettings>({
     userName: "",
     userInfo: "",
     responseStyle: "default",
     customInstruction: "",
   });
+  const [pseudo, setPseudo] = useState("");
+  const [isSavingPseudo, setIsSavingPseudo] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Load personalization settings from local storage
@@ -38,12 +48,75 @@ export const Settings = () => {
         console.error("Error loading personalization settings:", error);
       }
     }
+    
+    // Load pseudo from Supabase
+    loadPseudo();
   }, []);
+
+  const loadPseudo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserId(user.id);
+      const { data } = await supabase
+        .from('profiles')
+        .select('pseudo')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data?.pseudo) {
+        setPseudo(data.pseudo);
+        onPseudoChange?.(data.pseudo);
+      }
+    }
+  };
 
   const updateSetting = (key: keyof PersonalizationSettings, value: string) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     localStorage.setItem("juxPersonalization", JSON.stringify(newSettings));
+  };
+
+  const handleSavePseudo = async () => {
+    if (!userId || !pseudo.trim()) return;
+    
+    setIsSavingPseudo(true);
+    try {
+      // Check if profile exists
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (existing) {
+        // Update
+        const { error } = await supabase
+          .from('profiles')
+          .update({ pseudo: pseudo.trim() })
+          .eq('user_id', userId);
+        
+        if (error) throw error;
+      } else {
+        // Insert
+        const { error } = await supabase
+          .from('profiles')
+          .insert({ user_id: userId, pseudo: pseudo.trim() });
+        
+        if (error) throw error;
+      }
+      
+      toast({ title: "Pseudo enregistré !" });
+      onPseudoChange?.(pseudo.trim());
+    } catch (error: any) {
+      console.error('Error saving pseudo:', error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible d'enregistrer le pseudo", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSavingPseudo(false);
+    }
   };
 
   return (
@@ -59,11 +132,44 @@ export const Settings = () => {
           <SettingsIcon className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Personnaliser Jux</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Pseudo for multi rooms */}
+          {userId && (
+            <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border">
+              <Label htmlFor="pseudo" className="text-xs font-semibold">
+                Pseudo (pour les salons multi)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="pseudo"
+                  value={pseudo}
+                  onChange={(e) => setPseudo(e.target.value)}
+                  placeholder="Votre pseudo"
+                  maxLength={32}
+                  className="text-xs flex-1"
+                />
+                <Button 
+                  size="sm" 
+                  onClick={handleSavePseudo}
+                  disabled={isSavingPseudo || !pseudo.trim()}
+                >
+                  {isSavingPseudo ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Sauver"
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Requis pour créer ou rejoindre des salons multi
+              </p>
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="userName" className="text-xs">
               Comment souhaitez-vous que Jux vous appelle ?
