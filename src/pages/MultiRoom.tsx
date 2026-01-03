@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { JoinRoomDialog } from "@/components/JoinRoomDialog";
-import { Crown, UserIcon, LogOut, Loader2, Users, Copy, Check, AlertCircle } from "lucide-react";
+import { Crown, UserIcon, LogOut, Loader2, Users, Copy, Check, AlertCircle, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -62,6 +63,7 @@ const MultiRoom = () => {
   const [roomClosed, setRoomClosed] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [needsPseudo, setNeedsPseudo] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -162,12 +164,12 @@ const MultiRoom = () => {
     }
   };
 
-  const fetchRoomContent = async (roomId: string) => {
+  const fetchRoomContent = useCallback(async (roomIdParam: string) => {
     // Fetch members with pseudos
     const { data: membersData } = await supabase
       .from('room_members')
       .select('user_id, role')
-      .eq('room_id', roomId);
+      .eq('room_id', roomIdParam);
 
     if (membersData) {
       const membersWithPseudo = await Promise.all(
@@ -191,7 +193,7 @@ const MultiRoom = () => {
     const { data: messagesData } = await supabase
       .from('room_messages')
       .select('*')
-      .eq('room_id', roomId)
+      .eq('room_id', roomIdParam)
       .order('created_at', { ascending: true });
 
     if (messagesData) {
@@ -208,18 +210,38 @@ const MultiRoom = () => {
           return msg;
         })
       );
-      setMessages(messagesWithPseudo);
+      setMessages(prev => {
+        // Only update if there are new messages (silent sync)
+        if (JSON.stringify(prev.map(m => m.id)) !== JSON.stringify(messagesWithPseudo.map(m => m.id))) {
+          return messagesWithPseudo;
+        }
+        return prev;
+      });
     }
 
     // Fetch queue
-    await fetchQueue(roomId);
-  };
+    await fetchQueue(roomIdParam);
 
-  const fetchQueue = async (roomId: string) => {
+    // Fetch room status
+    const { data: roomData } = await supabase
+      .from('multi_rooms')
+      .select('is_active, current_speaker_id')
+      .eq('id', roomIdParam)
+      .single();
+    
+    if (roomData) {
+      if (!roomData.is_active) {
+        setRoomClosed(true);
+      }
+      setCurrentSpeaker(roomData.current_speaker_id);
+    }
+  }, []);
+
+  const fetchQueue = async (roomIdParam: string) => {
     const { data: queueData } = await supabase
       .from('message_queue')
       .select('*')
-      .eq('room_id', roomId)
+      .eq('room_id', roomIdParam)
       .eq('is_processed', false)
       .order('position', { ascending: true });
 
@@ -243,6 +265,17 @@ const MultiRoom = () => {
       }
     }
   };
+
+  // Silent sync every 5 seconds
+  useEffect(() => {
+    if (!roomId || !isMember) return;
+
+    const syncInterval = setInterval(() => {
+      fetchRoomContent(roomId);
+    }, 5000);
+
+    return () => clearInterval(syncInterval);
+  }, [roomId, isMember, fetchRoomContent]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -279,7 +312,11 @@ const MultiRoom = () => {
             .single();
           newMsg.pseudo = profile?.pseudo || 'Anonyme';
         }
-        setMessages(prev => [...prev, newMsg]);
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.find(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
       })
       .subscribe();
 
@@ -319,7 +356,7 @@ const MultiRoom = () => {
       supabase.removeChannel(roomChannel);
       supabase.removeChannel(queueChannel);
     };
-  }, [roomId, isMember, user]);
+  }, [roomId, isMember, user, fetchRoomContent]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -488,7 +525,7 @@ const MultiRoom = () => {
   };
 
   const handleCopyLink = async () => {
-    const link = `${window.location.origin}/room/${code}`;
+    const link = `${window.location.origin}/#/room/${code}`;
     await navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -503,6 +540,83 @@ const MultiRoom = () => {
     navigate('/', { state: { openSettings: true } });
   };
 
+  // Sidebar Content Component (reused for mobile and desktop)
+  const SidebarContent = () => (
+    <>
+      {/* Members */}
+      <div className="p-3 md:p-4 border-b border-border/50">
+        <h3 className="text-sm font-semibold mb-3">Participants</h3>
+        <div className="space-y-2">
+          {members.map((member) => (
+            <div 
+              key={member.user_id}
+              className={`flex items-center gap-2 p-2 rounded-lg ${
+                currentSpeaker === member.user_id ? 'bg-primary/20 ring-1 ring-primary' : 'bg-muted/30'
+              }`}
+            >
+              <div className="h-6 w-6 md:h-7 md:w-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
+                {member.role === 'admin' ? (
+                  <Crown className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary-foreground" />
+                ) : (
+                  <UserIcon className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary-foreground" />
+                )}
+              </div>
+              <span className="text-xs md:text-sm truncate flex-1">{member.pseudo}</span>
+              {currentSpeaker === member.user_id && (
+                <span className="text-xs text-primary animate-pulse">🎤</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Queue */}
+      <div className="p-3 md:p-4 flex-1">
+        <h3 className="text-sm font-semibold mb-3">File d'attente</h3>
+        {queue.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Aucune personne en attente</p>
+        ) : (
+          <div className="space-y-2">
+            {queue.map((item, index) => (
+              <div 
+                key={item.id}
+                className={`flex items-center gap-2 p-2 rounded-lg ${
+                  index === 0 ? 'bg-green-500/20' : 'bg-muted/30'
+                }`}
+              >
+                <span className="text-xs font-mono w-5">{index + 1}.</span>
+                <span className="text-xs md:text-sm truncate">{item.pseudo}</span>
+                {index === 0 && <span className="text-xs">👆</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-4">
+          {isInQueue ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs md:text-sm"
+              onClick={handleLeaveQueue}
+            >
+              Quitter la file ({myQueuePosition})
+            </Button>
+          ) : (
+            <Button 
+              size="sm" 
+              className="w-full bg-gradient-to-r from-primary to-secondary text-xs md:text-sm"
+              onClick={handleJoinQueue}
+              disabled={isSending}
+            >
+              Rejoindre la file
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -513,14 +627,14 @@ const MultiRoom = () => {
 
   if (needsAuth) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h1 className="text-xl font-bold mb-2">Connexion requise</h1>
-          <p className="text-muted-foreground mb-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-2xl max-w-md w-full text-center">
+          <AlertCircle className="h-10 w-10 md:h-12 md:w-12 text-destructive mx-auto mb-4" />
+          <h1 className="text-lg md:text-xl font-bold mb-2">Connexion requise</h1>
+          <p className="text-sm md:text-base text-muted-foreground mb-6">
             Vous devez vous connecter avec une adresse mail pour accéder aux salons multi
           </p>
-          <Button onClick={handleGoToAuth} className="bg-gradient-to-r from-primary to-secondary">
+          <Button onClick={handleGoToAuth} className="bg-gradient-to-r from-primary to-secondary w-full md:w-auto">
             Se connecter
           </Button>
         </div>
@@ -530,14 +644,14 @@ const MultiRoom = () => {
 
   if (needsPseudo) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center">
-          <UserIcon className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h1 className="text-xl font-bold mb-2">Pseudo requis</h1>
-          <p className="text-muted-foreground mb-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-2xl max-w-md w-full text-center">
+          <UserIcon className="h-10 w-10 md:h-12 md:w-12 text-primary mx-auto mb-4" />
+          <h1 className="text-lg md:text-xl font-bold mb-2">Pseudo requis</h1>
+          <p className="text-sm md:text-base text-muted-foreground mb-6">
             Vous devez définir un pseudo dans les paramètres pour accéder aux salons multi
           </p>
-          <Button onClick={handleGoToSettings} className="bg-gradient-to-r from-primary to-secondary">
+          <Button onClick={handleGoToSettings} className="bg-gradient-to-r from-primary to-secondary w-full md:w-auto">
             Définir un pseudo
           </Button>
         </div>
@@ -548,9 +662,9 @@ const MultiRoom = () => {
   if (roomClosed) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h1 className="text-xl font-bold mb-2">Salon fermé</h1>
-        <p className="text-muted-foreground text-center mb-6">
+        <AlertCircle className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground mb-4" />
+        <h1 className="text-lg md:text-xl font-bold mb-2">Salon fermé</h1>
+        <p className="text-sm md:text-base text-muted-foreground text-center mb-6">
           Ce salon n'existe plus ou a été fermé par l'hôte
         </p>
         <Button onClick={() => navigate('/')} variant="outline">
@@ -564,20 +678,42 @@ const MultiRoom = () => {
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <div className="border-b border-border/50 bg-card/50 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary-foreground" />
+        <div className="max-w-6xl mx-auto px-3 md:px-4 py-2 md:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Mobile sidebar trigger */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
+                <div className="p-3 border-b border-border/50 flex items-center justify-between">
+                  <h2 className="font-semibold text-sm">Salon Multi</h2>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <SidebarContent />
+                </div>
+              </SheetContent>
+            </Sheet>
+            
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Users className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="font-semibold">Salon Multi</h1>
+            <div className="hidden sm:block">
+              <h1 className="font-semibold text-sm md:text-base">Salon Multi</h1>
               <p className="text-xs text-muted-foreground">{members.length}/5 participants</p>
             </div>
+            <span className="sm:hidden text-xs text-muted-foreground">{members.length}/5</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <Button 
               variant="ghost" 
-              size="sm"
+              size="icon"
+              className="h-8 w-8"
               onClick={handleCopyLink}
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -585,102 +721,33 @@ const MultiRoom = () => {
             <Button 
               variant="destructive" 
               size="sm"
+              className="h-8 text-xs md:text-sm px-2 md:px-3"
               onClick={handleLeaveRoom}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              {isHost ? 'Fermer' : 'Quitter'}
+              <LogOut className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">{isHost ? 'Fermer' : 'Quitter'}</span>
             </Button>
           </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar - Members & Queue */}
-        <div className="w-64 border-r border-border/50 bg-card/30 flex flex-col">
-          {/* Members */}
-          <div className="p-4 border-b border-border/50">
-            <h3 className="text-sm font-semibold mb-3">Participants</h3>
-            <div className="space-y-2">
-              {members.map((member) => (
-                <div 
-                  key={member.user_id}
-                  className={`flex items-center gap-2 p-2 rounded-lg ${
-                    currentSpeaker === member.user_id ? 'bg-primary/20 ring-1 ring-primary' : 'bg-muted/30'
-                  }`}
-                >
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                    {member.role === 'admin' ? (
-                      <Crown className="h-3.5 w-3.5 text-primary-foreground" />
-                    ) : (
-                      <UserIcon className="h-3.5 w-3.5 text-primary-foreground" />
-                    )}
-                  </div>
-                  <span className="text-sm truncate flex-1">{member.pseudo}</span>
-                  {currentSpeaker === member.user_id && (
-                    <span className="text-xs text-primary animate-pulse">🎤</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Queue */}
-          <div className="p-4 flex-1">
-            <h3 className="text-sm font-semibold mb-3">File d'attente</h3>
-            {queue.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucune personne en attente</p>
-            ) : (
-              <div className="space-y-2">
-                {queue.map((item, index) => (
-                  <div 
-                    key={item.id}
-                    className={`flex items-center gap-2 p-2 rounded-lg ${
-                      index === 0 ? 'bg-green-500/20' : 'bg-muted/30'
-                    }`}
-                  >
-                    <span className="text-xs font-mono w-5">{index + 1}.</span>
-                    <span className="text-sm truncate">{item.pseudo}</span>
-                    {index === 0 && <span className="text-xs">👆</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            <div className="mt-4">
-              {isInQueue ? (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={handleLeaveQueue}
-                >
-                  Quitter la file ({myQueuePosition})
-                </Button>
-              ) : (
-                <Button 
-                  size="sm" 
-                  className="w-full bg-gradient-to-r from-primary to-secondary"
-                  onClick={handleJoinQueue}
-                  disabled={isSending}
-                >
-                  Rejoindre la file
-                </Button>
-              )}
-            </div>
-          </div>
+        {/* Sidebar - Desktop only */}
+        <div className="hidden md:flex w-56 lg:w-64 border-r border-border/50 bg-card/30 flex-col">
+          <SidebarContent />
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <ScrollArea ref={scrollAreaRef} className="flex-1">
-            <div className="max-w-3xl mx-auto py-4">
+            <div className="max-w-3xl mx-auto py-2 md:py-4">
               <AnimatePresence mode="popLayout">
                 {messages.map((message) => (
                   <motion.div
                     key={message.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`px-4 py-4 ${
+                    className={`px-3 md:px-4 py-3 md:py-4 ${
                       message.is_ai_response 
                         ? "bg-card/50 border-y border-border/30" 
                         : "bg-background"
@@ -701,11 +768,11 @@ const MultiRoom = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="px-4 py-4 bg-card/50 border-y border-border/30"
+                  className="px-3 md:px-4 py-3 md:py-4 bg-card/50 border-y border-border/30"
                 >
                   <div className="flex items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-muted-foreground">Jux réfléchit...</span>
+                    <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Jux réfléchit...</span>
                   </div>
                 </motion.div>
               )}
@@ -714,7 +781,7 @@ const MultiRoom = () => {
 
           {/* Input */}
           <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
-            <div className="px-4 py-4 max-w-3xl mx-auto">
+            <div className="px-3 md:px-4 py-3 md:py-4 max-w-3xl mx-auto">
               {(queue.length === 0 || queue[0]?.user_id === user?.id) ? (
                 <ChatInput 
                   onSend={handleSendMessage}
@@ -722,8 +789,8 @@ const MultiRoom = () => {
                   imageDisabled={true}
                 />
               ) : (
-                <div className="text-center py-3 text-muted-foreground">
-                  <p className="text-sm">
+                <div className="text-center py-2 md:py-3 text-muted-foreground">
+                  <p className="text-xs md:text-sm">
                     {isInQueue 
                       ? `Votre position : ${myQueuePosition} - Attendez votre tour`
                       : "Rejoignez la file d'attente pour envoyer un message"
