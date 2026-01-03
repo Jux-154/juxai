@@ -111,12 +111,12 @@ const MultiRoom = () => {
     setIsLoading(false);
   };
 
-  // Fetch room data
+  // Fetch room data - aussi déclenché quand on a user mais pas encore de pseudo vérifié
   useEffect(() => {
-    if (code && user && userPseudo) {
+    if (code && user && userPseudo && !needsPseudo) {
       fetchRoomData();
     }
-  }, [code, user, userPseudo]);
+  }, [code, user, userPseudo, needsPseudo]);
 
   const fetchRoomData = async () => {
     if (!code || !user) return;
@@ -513,30 +513,34 @@ const MultiRoom = () => {
 
   if (needsAuth) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h1 className="text-xl font-bold mb-2">Connexion requise</h1>
-        <p className="text-muted-foreground text-center mb-6">
-          Vous devez vous connecter avec une adresse mail pour accéder aux salons multi
-        </p>
-        <Button onClick={handleGoToAuth} className="bg-gradient-to-r from-primary to-secondary">
-          Se connecter
-        </Button>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h1 className="text-xl font-bold mb-2">Connexion requise</h1>
+          <p className="text-muted-foreground mb-6">
+            Vous devez vous connecter avec une adresse mail pour accéder aux salons multi
+          </p>
+          <Button onClick={handleGoToAuth} className="bg-gradient-to-r from-primary to-secondary">
+            Se connecter
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (needsPseudo) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
-        <UserIcon className="h-12 w-12 text-primary mb-4" />
-        <h1 className="text-xl font-bold mb-2">Pseudo requis</h1>
-        <p className="text-muted-foreground text-center mb-6">
-          Vous devez définir un pseudo dans les paramètres pour accéder aux salons multi
-        </p>
-        <Button onClick={handleGoToSettings} className="bg-gradient-to-r from-primary to-secondary">
-          Définir un pseudo
-        </Button>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center">
+          <UserIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h1 className="text-xl font-bold mb-2">Pseudo requis</h1>
+          <p className="text-muted-foreground mb-6">
+            Vous devez définir un pseudo dans les paramètres pour accéder aux salons multi
+          </p>
+          <Button onClick={handleGoToSettings} className="bg-gradient-to-r from-primary to-secondary">
+            Définir un pseudo
+          </Button>
+        </div>
       </div>
     );
   }

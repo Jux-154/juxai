@@ -124,8 +124,8 @@ export const JoinRoomDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+<Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md z-50">
         <DialogHeader>
           <DialogTitle>Rejoindre le salon ?</DialogTitle>
           <DialogDescription>
