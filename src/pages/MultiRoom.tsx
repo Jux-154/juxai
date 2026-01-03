@@ -8,7 +8,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { JoinRoomDialog } from "@/components/JoinRoomDialog";
-import { Crown, UserIcon, LogOut, Loader2, Users, Copy, Check, AlertCircle, Menu, X } from "lucide-react";
+import { Crown, UserIcon, LogOut, Loader2, Users, Copy, Check, AlertCircle, Menu, X, Trash2, UserMinus } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -165,28 +166,33 @@ const MultiRoom = () => {
   };
 
   const fetchRoomContent = useCallback(async (roomIdParam: string) => {
-    // Fetch members with pseudos
-    const { data: membersData } = await supabase
+    // Fetch members with pseudos - utiliser une requête plus efficace
+    const { data: membersData, error: membersError } = await supabase
       .from('room_members')
       .select('user_id, role')
       .eq('room_id', roomIdParam);
 
-    if (membersData) {
-      const membersWithPseudo = await Promise.all(
-        membersData.map(async (member) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('pseudo')
-            .eq('user_id', member.user_id)
-            .single();
-          
-          return {
-            ...member,
-            pseudo: profile?.pseudo || 'Anonyme',
-          };
-        })
-      );
+    console.log('Members fetched:', membersData, 'Error:', membersError);
+
+    if (membersData && membersData.length > 0) {
+      // Récupérer tous les profils en une seule requête
+      const userIds = membersData.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, pseudo')
+        .in('user_id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p.pseudo]) || []);
+      
+      const membersWithPseudo = membersData.map(member => ({
+        ...member,
+        pseudo: profileMap.get(member.user_id) || 'Anonyme',
+      }));
+      
+      console.log('Members with pseudo:', membersWithPseudo);
       setMembers(membersWithPseudo);
+    } else {
+      console.log('No members found or error');
     }
 
     // Fetch messages
@@ -506,22 +512,54 @@ const MultiRoom = () => {
   const handleLeaveRoom = async () => {
     if (!roomId || !user) return;
 
-    if (isHost) {
-      // Close room
-      await supabase
-        .from('multi_rooms')
-        .update({ is_active: false })
-        .eq('id', roomId);
-    } else {
-      // Just leave
-      await supabase
-        .from('room_members')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', user.id);
-    }
+    // Quitter le salon (supprimer de la liste des membres)
+    await supabase
+      .from('room_members')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', user.id);
+
+    // Aussi quitter la queue si présent
+    await supabase
+      .from('message_queue')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', user.id);
 
     navigate('/');
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!roomId || !user || !isHost) return;
+
+    // Fermer le salon (le rend inactif pour tous)
+    await supabase
+      .from('multi_rooms')
+      .update({ is_active: false })
+      .eq('id', roomId);
+
+    toast({ title: "Salon supprimé" });
+    navigate('/');
+  };
+
+  const handleKickMember = async (memberUserId: string) => {
+    if (!roomId || !user || !isHost) return;
+
+    // Supprimer le membre du salon
+    await supabase
+      .from('room_members')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', memberUserId);
+
+    // Supprimer aussi de la queue
+    await supabase
+      .from('message_queue')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', memberUserId);
+
+    toast({ title: "Participant expulsé" });
   };
 
   const handleCopyLink = async () => {
@@ -545,7 +583,7 @@ const MultiRoom = () => {
     <>
       {/* Members */}
       <div className="p-3 md:p-4 border-b border-border/50">
-        <h3 className="text-sm font-semibold mb-3">Participants</h3>
+        <h3 className="text-sm font-semibold mb-3">Participants ({members.length}/5)</h3>
         <div className="space-y-2">
           {members.map((member) => (
             <div 
@@ -564,6 +602,30 @@ const MultiRoom = () => {
               <span className="text-xs md:text-sm truncate flex-1">{member.pseudo}</span>
               {currentSpeaker === member.user_id && (
                 <span className="text-xs text-primary animate-pulse">🎤</span>
+              )}
+              {/* Bouton expulsion - visible seulement par l'hôte et pas sur soi-même */}
+              {isHost && member.user_id !== user?.id && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <UserMinus className="h-3 w-3" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Expulser {member.pseudo} ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Ce participant sera retiré du salon et devra rejoindre à nouveau.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleKickMember(member.user_id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Expulser
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           ))}
@@ -718,15 +780,47 @@ const MultiRoom = () => {
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
+            
+            {/* Bouton Quitter */}
             <Button 
-              variant="destructive" 
+              variant="outline" 
               size="sm"
               className="h-8 text-xs md:text-sm px-2 md:px-3"
               onClick={handleLeaveRoom}
             >
               <LogOut className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">{isHost ? 'Fermer' : 'Quitter'}</span>
+              <span className="hidden md:inline">Quitter</span>
             </Button>
+            
+            {/* Bouton Supprimer - seulement pour l'hôte */}
+            {isHost && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    className="h-8 text-xs md:text-sm px-2 md:px-3"
+                  >
+                    <Trash2 className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Supprimer</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer le salon ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Le salon sera fermé pour tous les participants. Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteRoom} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </div>

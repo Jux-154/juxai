@@ -54,6 +54,7 @@ export type Database = {
           code: string
           created_at: string
           current_speaker_id: string | null
+          expires_at: string | null
           host_id: string
           id: string
           is_active: boolean
@@ -63,6 +64,7 @@ export type Database = {
           code: string
           created_at?: string
           current_speaker_id?: string | null
+          expires_at?: string | null
           host_id: string
           id?: string
           is_active?: boolean
@@ -72,6 +74,7 @@ export type Database = {
           code?: string
           created_at?: string
           current_speaker_id?: string | null
+          expires_at?: string | null
           host_id?: string
           id?: string
           is_active?: boolean
@@ -217,7 +220,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_rooms: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
