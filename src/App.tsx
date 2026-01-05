@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ConfirmMail from "./pages/ConfirmMail";
-import MultiRoom from "./pages/MultiRoom";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -156,7 +155,6 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/confirm-mail" element={<ConfirmMail />} />
-                  <Route path="/room/:code" element={<MultiRoom />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
