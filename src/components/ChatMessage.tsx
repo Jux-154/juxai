@@ -443,49 +443,55 @@ export const ChatMessage = ({ role, content, searchResults }: ChatMessageProps) 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="flex gap-4"
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="flex gap-4 sm:gap-5"
     >
       <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{
           type: "spring",
-          stiffness: 260,
-          damping: 20,
+          stiffness: 280,
+          damping: 22,
           delay: 0.05
         }}
         className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md",
+          "flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden",
           isUser
-            ? "bg-gradient-to-br from-primary to-primary/80"
-            : "bg-gradient-to-br from-primary via-primary/90 to-secondary"
+            ? "bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20"
+            : "shadow-lg shadow-secondary/20"
         )}
       >
         {isUser ? (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 500 }}
+            transition={{ delay: 0.15, type: "spring", stiffness: 400 }}
           >
-            <User className="h-5 w-5 text-primary-foreground" />
+            <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
           </motion.div>
         ) : (
           <motion.img
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
+            transition={{ delay: 0.15, duration: 0.25 }}
             src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
             alt="Jux"
-            className="w-10 h-10 rounded-xl object-cover"
+            className="w-full h-full object-cover"
           />
         )}
       </motion.div>
-      <div className="flex-1 space-y-3 pt-1">
-        {formatContent()}
+      <div className="flex-1 space-y-3 pt-1 min-w-0">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+        >
+          {formatContent()}
+        </motion.div>
         {!isUser && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}

@@ -52,7 +52,7 @@ export const ConversationItem = ({
   onClick,
   onRename,
   onDelete,
-  isMobile = false,
+  isMobile,
   animationState = 'idle',
 }: ConversationItemProps) => {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);

@@ -1,4 +1,5 @@
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarToggleProps {
   onClick: () => void;
@@ -7,15 +8,19 @@ interface SidebarToggleProps {
 
 export const SidebarToggle = ({ onClick, isSidebarOpen }: SidebarToggleProps) => {
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className="fixed top-2 sm:top-4 left-2 sm:left-4 z-[1001] bg-card border border-border rounded-lg p-2 sm:p-3 text-foreground hover:bg-accent transition-all duration-300"
-      style={{
-        transform: isSidebarOpen ? 'translateX(-100px)' : 'translateX(0)',
-        transition: 'transform 0.3s ease-in-out'
+      className="fixed top-3 sm:top-4 left-3 sm:left-4 z-[1001] bg-card/90 backdrop-blur-sm border border-border/50 rounded-xl p-2.5 sm:p-3 text-foreground hover:bg-accent hover:border-primary/30 transition-all duration-200 shadow-lg"
+      initial={false}
+      animate={{
+        x: isSidebarOpen ? -100 : 0,
+        opacity: isSidebarOpen ? 0 : 1,
       }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
     >
-      <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-    </button>
+      <Menu className="h-5 w-5" />
+    </motion.button>
   );
 };
