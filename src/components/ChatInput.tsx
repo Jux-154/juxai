@@ -265,20 +265,20 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      <div className="relative flex items-center gap-2">
+      <div className="relative flex items-center gap-2 sm:gap-3">
         {imagePreview && (
-          <div className="absolute bottom-full left-0 mb-2 p-2 bg-card rounded-lg border shadow-lg">
+          <div className="absolute bottom-full left-0 mb-3 p-3 bg-card/95 backdrop-blur-sm rounded-xl border border-border/50 shadow-xl">
             <div className="relative">
               <img
                 src={imagePreview}
                 alt="Aperçu"
-                className="max-w-[200px] rounded"
+                className="max-w-[180px] rounded-lg"
               />
               <Button
                 type="button"
                 size="icon"
                 variant="destructive"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg"
                 onClick={removeImage}
               >
                 <X className="h-3 w-3" />
@@ -287,11 +287,11 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
           </div>
         )}
         {documentFiles.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-2 p-2 bg-card rounded-lg border shadow-lg max-w-[300px]">
+          <div className="absolute bottom-full left-0 mb-3 p-3 bg-card/95 backdrop-blur-sm rounded-xl border border-border/50 shadow-xl max-w-[300px]">
             <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 text-secondary" />
               <span className="text-sm font-medium">
-                {documentFiles.length} document{documentFiles.length > 1 ? 's' : ''} sélectionné{documentFiles.length > 1 ? 's' : ''}
+                {documentFiles.length} document{documentFiles.length > 1 ? 's' : ''}
               </span>
               <Button
                 type="button"
@@ -303,12 +303,12 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
                 <X className="h-3 w-3" />
               </Button>
             </div>
-            <div className="space-y-1 max-h-[100px] overflow-y-auto">
+            <div className="space-y-1.5 max-h-[100px] overflow-y-auto">
               {documentFiles.map((file, index) => (
-                <div key={index} className="text-xs text-muted-foreground flex items-center gap-2">
-                  <FileText className="h-3 w-3" />
-                  <span className="truncate">{file.name}</span>
-                  <span>({Math.round(file.size / 1024)}KB)</span>
+                <div key={index} className="text-xs text-muted-foreground flex items-center gap-2 bg-muted/30 rounded-lg px-2 py-1.5">
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate flex-1">{file.name}</span>
+                  <span className="text-muted-foreground/60">({Math.round(file.size / 1024)}KB)</span>
                 </div>
               ))}
             </div>
@@ -336,10 +336,10 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               size="icon"
               variant={(imageBase64 || useDocumentImport) ? "default" : "outline"}
               className={cn(
-                "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
+                "shrink-0 transition-all duration-200 h-11 w-11 sm:h-12 sm:w-12 rounded-xl",
                 (imageBase64 || useDocumentImport)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 glow-button"
-                  : "bg-card/80 border-border/50 hover:bg-accent hover:border-primary/50"
+                  : "bg-card/80 border-border/50 hover:bg-accent hover:border-primary/40"
               )}
               disabled={isLoading}
               title="Options de message"
@@ -347,7 +347,7 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               <Plus className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52 p-2">
+          <DropdownMenuContent align="start" className="w-52 p-2 bg-card/95 backdrop-blur-sm">
             <DropdownMenuItem
               onClick={() => {
                 if (!imageDisabled) {
@@ -355,22 +355,32 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
                   setMode("image");
                 }
               }}
-              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed")}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
+                (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed"
+              )}
               disabled={useDocumentImport || imageDisabled}
             >
-              <Image className="h-4 w-4 text-primary" />
-              <span>{imageDisabled ? "Image non disponible" : "Ajouter une image"}</span>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Image className="h-4 w-4 text-primary" />
+              </div>
+              <span className="font-medium">{imageDisabled ? "Image non disponible" : "Ajouter une image"}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 documentInputRef.current?.click();
                 setMode("document");
               }}
-              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg", imageBase64 && "opacity-50 cursor-not-allowed")}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer mt-1",
+                imageBase64 && "opacity-50 cursor-not-allowed"
+              )}
               disabled={!!imageBase64}
             >
-              <FileText className="h-4 w-4 text-secondary" />
-              <span>Importer un document</span>
+              <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-secondary" />
+              </div>
+              <span className="font-medium">Importer un document</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -382,9 +392,9 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
             onChange={(e) => setInput(e.target.value)}
             placeholder="Envoyez un message..."
             className={cn(
-              "min-h-[40px] max-h-[120px] h-10 sm:h-12 transition-all duration-200 text-sm sm:text-base pr-12 resize-none rounded-xl",
-              "bg-card/80 border-border/50 focus:border-primary/50 focus:bg-card",
-              "focus-visible:ring-0 overflow-y-auto input-glow placeholder:text-muted-foreground/60"
+              "min-h-[44px] max-h-[120px] h-11 sm:h-12 transition-all duration-200 text-sm sm:text-base pr-12 resize-none rounded-xl",
+              "bg-card/60 border-border/40 focus:border-primary/50 focus:bg-card/80",
+              "focus-visible:ring-0 overflow-y-auto input-glow placeholder:text-muted-foreground/50"
             )}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -408,16 +418,18 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               variant="ghost"
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg transition-all",
-                isRecording && "bg-destructive/10 text-destructive"
+                isRecording 
+                  ? "bg-destructive/15 text-destructive" 
+                  : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10"
               )}
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
               disabled={isLoading}
-              title={isRecording ? "Arrêter l'enregistrement" : "Commencer l'enregistrement vocal"}
+              title={isRecording ? "Arrêter l'enregistrement" : "Enregistrement vocal"}
             >
               {isRecording ? (
                 <MicOff className="h-4 w-4 animate-pulse" />
               ) : (
-                <Mic className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Mic className="h-4 w-4 transition-colors" />
               )}
             </Button>
           )}
@@ -429,8 +441,9 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
             size="icon"
             onClick={onStop}
             className={cn(
-              "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
-              "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:scale-105 active:scale-95"
+              "shrink-0 transition-all duration-200 h-11 w-11 sm:h-12 sm:w-12 rounded-xl",
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+              "hover:scale-105 active:scale-95 shadow-lg"
             )}
             title="Arrêter la génération"
           >
@@ -442,11 +455,12 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
             size="icon"
             disabled={!input.trim() && !imageBase64}
             className={cn(
-              "shrink-0 transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 rounded-xl",
+              "shrink-0 transition-all duration-200 h-11 w-11 sm:h-12 sm:w-12 rounded-xl",
               "bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-secondary",
               "text-primary-foreground glow-button hover:scale-105 active:scale-95",
-              "disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+              "disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed disabled:from-muted disabled:to-muted"
             )}
+            title="Envoyer le message"
           >
             <Send className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>

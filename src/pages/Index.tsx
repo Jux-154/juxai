@@ -8,13 +8,15 @@ import { DownloadCard } from "@/components/DownloadCard";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
+import { PromptSuggestions } from "@/components/PromptSuggestions";
+import { TypingIndicator } from "@/components/TypingIndicator";
 
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Plus, Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Sparkles, Plus, LogOut, User as UserIcon, X, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { scaleVariants, slideInVariants, floatingVariants, useIntersectionObserver, staggerContainer } from "@/lib/animations";
 
@@ -618,36 +620,65 @@ const Index = () => {
 
       {/* Sidebar */}
       <motion.div 
-        className={`w-72 sm:w-80 md:w-[340px] border-r border-sidebar-border/50 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
+        className={`w-80 sm:w-[340px] border-r border-sidebar-border/30 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
-        {/* Sidebar Header */}
-        <div className="p-5 border-b border-sidebar-border/50">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
+        {/* Sidebar Header with Logo */}
+        <div className="p-4 border-b border-sidebar-border/30">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl blur-md opacity-50" />
+                <div className="relative h-10 w-10 rounded-xl overflow-hidden">
+                  <img
+                    src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
+                    alt="Jux"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div>
+                <h1 className="font-bold text-lg text-foreground">Jux AI</h1>
+                <p className="text-xs text-muted-foreground">Votre assistant intelligent</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeSidebar}
+              className="h-8 w-8 rounded-lg hover:bg-accent"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
             <Button
               onClick={createNewChat}
-              className="w-full h-12 bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-xl glow-button transition-all duration-200"
+              className="w-full h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-secondary text-primary-foreground font-medium rounded-xl glow-button transition-all duration-300 gap-2"
             >
-              <Plus className="h-5 w-5 mr-2" />
+              <Plus className="h-4 w-4" />
               Nouvelle conversation
             </Button>
           </motion.div>
         </div>
         
         {/* Conversations List */}
-        <ScrollArea className="flex-1 px-3">
-          <div className="py-3 space-y-1">
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-0.5">
+            <div className="px-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Historique
+              </span>
+            </div>
             {conversations.map((conv, index) => (
               <motion.div
                 key={conv.id}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
+                transition={{ delay: index * 0.02, duration: 0.2 }}
               >
                 <ConversationItem
                   id={conv.id}
@@ -668,9 +699,9 @@ const Index = () => {
         </ScrollArea>
         
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-sidebar-border/50 space-y-4 bg-sidebar-background/50 backdrop-blur-sm">
+        <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
           {/* Model Selector */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <ModelSelector
               isGuest={isGuest}
               selectedModel={selectedModel}
@@ -679,7 +710,7 @@ const Index = () => {
           </div>
           
           {/* Auth Status & Actions */}
-          <div className="flex items-center gap-2 pt-2 border-t border-sidebar-border/30">
+          <div className="flex items-center gap-2 pt-3 border-t border-sidebar-border/20">
             <Settings />
             <Updates />
             <div className="flex-1" />
@@ -688,7 +719,7 @@ const Index = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-xs gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 Déconnexion
@@ -719,7 +750,7 @@ const Index = () => {
             <div className="max-w-4xl mx-auto">
               {currentMessages.length === 0 ? (
                 <motion.div
-                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4 py-12"
+                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4 py-8"
                   variants={staggerContainer}
                   initial="initial"
                   animate="animate"
@@ -727,22 +758,22 @@ const Index = () => {
                   {/* Animated background orbs */}
                   <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <motion.div 
-                      className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl"
+                      className="absolute top-1/4 left-1/4 w-80 h-80 bg-primary/8 rounded-full blur-3xl"
                       animate={{ 
-                        x: [0, 50, 0], 
-                        y: [0, 30, 0],
-                        scale: [1, 1.1, 1]
-                      }}
-                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <motion.div 
-                      className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-secondary/5 rounded-full blur-3xl"
-                      animate={{ 
-                        x: [0, -40, 0], 
-                        y: [0, -20, 0],
+                        x: [0, 60, 0], 
+                        y: [0, 40, 0],
                         scale: [1, 1.15, 1]
                       }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.div 
+                      className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/6 rounded-full blur-3xl"
+                      animate={{ 
+                        x: [0, -50, 0], 
+                        y: [0, -30, 0],
+                        scale: [1, 1.2, 1]
+                      }}
+                      transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                     />
                   </div>
                   
@@ -750,44 +781,71 @@ const Index = () => {
                     variants={slideInVariants.slideInUp}
                     className="relative z-10"
                   >
-                    {/* Logo */}
+                    {/* Large Logo */}
                     <motion.div
-                      className="mb-6 flex justify-center"
+                      className="mb-8 flex justify-center"
                       initial={{ scale: 0, rotate: -180 }}
                       animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                      transition={{ type: "spring", stiffness: 180, damping: 12, delay: 0.1 }}
                     >
                       <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-2xl blur-xl opacity-40" />
-                        <div className="relative bg-gradient-to-br from-primary to-secondary p-4 rounded-2xl">
-                          <Sparkles className="h-10 w-10 text-primary-foreground" />
+                        <motion.div 
+                          className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-3xl blur-2xl"
+                          animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1] }}
+                          transition={{ duration: 3, repeat: Infinity }}
+                        />
+                        <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-3xl overflow-hidden border-2 border-primary/20 shadow-2xl">
+                          <img
+                            src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
+                            alt="Jux"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       </div>
                     </motion.div>
                     
                     <motion.h1
-                      className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent"
+                      className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent"
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.8, delay: 0.2 }}
                     >
-                      Discutez avec Jux
+                      Bonjour !
                     </motion.h1>
                   </motion.div>
 
                   <motion.p
-                    className="text-muted-foreground max-w-md mb-8 text-lg"
+                    className="text-muted-foreground max-w-md mb-10 text-lg sm:text-xl"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.4 }}
                   >
-                    Votre assistant IA intelligent, prêt à vous aider
+                    Comment puis-je vous aider aujourd'hui ?
                   </motion.p>
+
+                  {/* Prompt Suggestions */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.5 }}
+                    className="relative z-10 mb-8"
+                  >
+                    <PromptSuggestions 
+                      onSelect={(prompt) => {
+                        const input = document.querySelector('textarea') as HTMLTextAreaElement;
+                        if (input) {
+                          input.value = prompt;
+                          input.focus();
+                          input.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                      }}
+                    />
+                  </motion.div>
 
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.8 }}
+                    transition={{ duration: 0.6, delay: 0.9 }}
                     className="relative z-10"
                   >
                     <DownloadCard />
@@ -817,39 +875,21 @@ const Index = () => {
                       </motion.div>
                     ))}
                   </AnimatePresence>
-                  {isLoading && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
-                    <motion.div
-                      className="px-4 sm:px-6 py-5 sm:py-6 bg-card/50 border-y border-border/30"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="max-w-4xl mx-auto flex gap-4 items-center">
-                        <div className="relative">
-                          <motion.div
-                            className="absolute inset-0 bg-primary/20 rounded-lg blur-md"
-                            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          />
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="relative"
-                          >
-                            <Loader2 className="h-6 w-6 text-primary" />
-                          </motion.div>
+                  <AnimatePresence>
+                    {isLoading && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
+                      <motion.div
+                        className="message-assistant"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="max-w-4xl mx-auto">
+                          <TypingIndicator />
                         </div>
-                        <motion.div
-                          className="text-muted-foreground font-medium"
-                          animate={{ opacity: [0.6, 1, 0.6] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          Jux réfléchit...
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
