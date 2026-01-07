@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      image_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_base64: string | null
+          negative: string | null
+          prompt: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_base64?: string | null
+          negative?: string | null
+          prompt: string
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_base64?: string | null
+          negative?: string | null
+          prompt?: string
+          status?: string
+        }
+        Relationships: []
+      }
       message_queue: {
         Row: {
           created_at: string
