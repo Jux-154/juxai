@@ -351,9 +351,10 @@ const Index = () => {
               .from("image_requests")
               .select("status, image_base64")
               .eq("id", imageRequestId)
-              .single();
+              .maybeSingle();
 
             if (pollError) throw pollError;
+            if (!pollData) continue; // Pas encore de données, continuer le polling
 
             // Mettre à jour le message de progression selon le statut
             if (pollData.status !== lastStatus) {
