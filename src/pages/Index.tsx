@@ -290,33 +290,80 @@ const Index = () => {
     shouldStopRef.current = false;
 
     try {
-      // Si on génère une image, on ne passe pas par Supabase/LM Studio
+      // Si on génère une image, utiliser l'edge function ComfyUI
       if (generateImage) {
-        console.log("Génération d'image en cours...");
-        const { generateFromText } = await import("@/utils/generateImages");
-        const generatedImageUrl = await generateFromText(content);
-
-        console.log("Image générée:", generatedImageUrl);
-        toast({
-          title: "Image générée",
-          description: "Votre image a été créée avec succès",
-        });
-
-        // Créer le message assistant avec juste l'image générée
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
+        console.log("Génération d'image via ComfyUI...");
+        
+        // Créer un message de progression
+        const progressMessageId = (Date.now() + 1).toString();
+        const progressMessage: Message = {
+          id: progressMessageId,
           role: "assistant",
-          content: [
-            { type: "text", text: `Voici l'image générée pour : "${content}"` },
-            { type: "image_url", image_url: { url: generatedImageUrl } }
-          ],
+          content: "🎨 Génération de votre image en cours...",
           timestamp: Date.now(),
         };
-
-        // Mettre à jour la conversation avec le message image
+        
         updateConversation(currentConversationId, {
-          messages: [...updatedMessages, assistantMessage],
+          messages: [...updatedMessages, progressMessage],
         });
+
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-image', {
+            body: { 
+              prompt: content,
+              negativePrompt: "",
+              requestId: Date.now().toString()
+            }
+          });
+
+          if (error) throw error;
+
+          if (data?.imageUrl) {
+            console.log("Image générée avec succès");
+            toast({
+              title: "Image générée",
+              description: "Votre image a été créée avec succès",
+            });
+
+            // Créer le message assistant avec l'image générée
+            const assistantMessage: Message = {
+              id: progressMessageId,
+              role: "assistant",
+              content: [
+                { type: "text", text: `Voici l'image générée pour : "${content}"` },
+                { type: "image_url", image_url: { url: data.imageUrl } }
+              ],
+              timestamp: Date.now(),
+            };
+
+            // Mettre à jour la conversation avec le message image
+            updateConversation(currentConversationId, {
+              messages: [...updatedMessages, assistantMessage],
+            });
+          } else {
+            throw new Error(data?.error || "Erreur lors de la génération");
+          }
+        } catch (genError: any) {
+          console.error("Erreur génération image:", genError);
+          
+          // Mettre à jour avec message d'erreur
+          const errorMessage: Message = {
+            id: progressMessageId,
+            role: "assistant",
+            content: `❌ Erreur lors de la génération de l'image: ${genError.message || "Erreur inconnue"}`,
+            timestamp: Date.now(),
+          };
+          
+          updateConversation(currentConversationId, {
+            messages: [...updatedMessages, errorMessage],
+          });
+          
+          toast({
+            title: "Erreur de génération",
+            description: genError.message || "Impossible de générer l'image",
+            variant: "destructive",
+          });
+        }
 
         // Auto-scroll to the new assistant message with smooth animation
         setTimeout(() => {
@@ -328,7 +375,9 @@ const Index = () => {
           }
         }, 100);
 
-        return; // Sortir de la fonction, pas besoin d'aller plus loin
+        setIsLoading(false);
+        setIsConversationLoading(false);
+        return; // Sortir de la fonction
       }
 
       // Pour les autres cas (chat normal ou import document), continuer avec Supabase
@@ -904,6 +953,7 @@ const Index = () => {
               onStop={handleStopGeneration} 
               isLoading={isLoading}
               imageDisabled={!modelSupportsImages(selectedModel)}
+              isAuthenticated={!!user && !isGuest}
             />
           </div>
         </div>

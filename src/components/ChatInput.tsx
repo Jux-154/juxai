@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Image, X, FileText, Plus, Mic, MicOff, AlertTriangle, Square } from "lucide-react";
+import { Send, Loader2, Image, X, FileText, Plus, Mic, MicOff, AlertTriangle, Square, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ interface ChatInputProps {
   isLoading: boolean;
   isWebView?: boolean;
   imageDisabled?: boolean;
+  isAuthenticated?: boolean;
 }
 
 interface DocumentContent {
@@ -36,14 +37,15 @@ interface DocumentContent {
   base64: boolean;
 }
 
-export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageDisabled = false }: ChatInputProps) => {
+export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageDisabled = false, isAuthenticated = false }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [useDocumentImport, setUseDocumentImport] = useState(false);
-  const [mode, setMode] = useState<"none" | "image" | "document">("none");
+  const [mode, setMode] = useState<"none" | "image" | "document" | "generate-image">("none");
   const [isRecording, setIsRecording] = useState(false);
+  const [generateImageMode, setGenerateImageMode] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -71,13 +73,15 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
         );
       }
       
-      onSend(input.trim(), imageBase64 || undefined, useDocumentImport, false, docContents);
+      // Pass generateImageMode flag to parent
+      onSend(input.trim(), imageBase64 || undefined, useDocumentImport, generateImageMode, docContents);
       setInput("");
       setImagePreview(null);
       setImageBase64(null);
       setDocumentFiles([]);
       setMode("none");
       setUseDocumentImport(false);
+      setGenerateImageMode(false);
     }
   };
 
@@ -334,17 +338,19 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
             <Button
               type="button"
               size="icon"
-              variant={(imageBase64 || useDocumentImport) ? "default" : "outline"}
+              variant={(imageBase64 || useDocumentImport || generateImageMode) ? "default" : "outline"}
               className={cn(
                 "shrink-0 transition-all duration-200 h-11 w-11 sm:h-12 sm:w-12 rounded-xl",
-                (imageBase64 || useDocumentImport)
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 glow-button"
-                  : "bg-card/80 border-border/50 hover:bg-accent hover:border-primary/40"
+                generateImageMode
+                  ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white glow-button"
+                  : (imageBase64 || useDocumentImport)
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 glow-button"
+                    : "bg-card/80 border-border/50 hover:bg-accent hover:border-primary/40"
               )}
               disabled={isLoading}
               title="Options de message"
             >
-              <Plus className="h-5 w-5" />
+              {generateImageMode ? <Wand2 className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-52 p-2 bg-card/95 backdrop-blur-sm">
@@ -357,9 +363,9 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               }}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                (useDocumentImport || imageDisabled) && "opacity-50 cursor-not-allowed"
+                (useDocumentImport || imageDisabled || generateImageMode) && "opacity-50 cursor-not-allowed"
               )}
-              disabled={useDocumentImport || imageDisabled}
+              disabled={useDocumentImport || imageDisabled || generateImageMode}
             >
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Image className="h-4 w-4 text-primary" />
@@ -373,27 +379,77 @@ export const ChatInput = ({ onSend, onStop, isLoading, isWebView = false, imageD
               }}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer mt-1",
-                imageBase64 && "opacity-50 cursor-not-allowed"
+                (imageBase64 || generateImageMode) && "opacity-50 cursor-not-allowed"
               )}
-              disabled={!!imageBase64}
+              disabled={!!imageBase64 || generateImageMode}
             >
               <div className="h-8 w-8 rounded-lg bg-secondary/10 flex items-center justify-center">
                 <FileText className="h-4 w-4 text-secondary" />
               </div>
               <span className="font-medium">Importer un document</span>
             </DropdownMenuItem>
+            
+            {/* Generate Image Option - Only for authenticated users */}
+            <DropdownMenuItem
+              onClick={() => {
+                if (isAuthenticated) {
+                  setGenerateImageMode(!generateImageMode);
+                  setMode(generateImageMode ? "none" : "generate-image");
+                  // Clear other modes
+                  if (!generateImageMode) {
+                    setImagePreview(null);
+                    setImageBase64(null);
+                    setDocumentFiles([]);
+                    setUseDocumentImport(false);
+                  }
+                }
+              }}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer mt-1",
+                !isAuthenticated && "opacity-50 cursor-not-allowed",
+                generateImageMode && "bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20"
+              )}
+              disabled={!isAuthenticated}
+            >
+              <div className={cn(
+                "h-8 w-8 rounded-lg flex items-center justify-center",
+                generateImageMode 
+                  ? "bg-gradient-to-r from-violet-500 to-fuchsia-500" 
+                  : "bg-violet-500/10"
+              )}>
+                <Wand2 className={cn("h-4 w-4", generateImageMode ? "text-white" : "text-violet-500")} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  {generateImageMode ? "Mode image activé" : "Créer une image"}
+                </span>
+                {!isAuthenticated && (
+                  <span className="text-xs text-muted-foreground">Connexion requise</span>
+                )}
+              </div>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         
         <div className="relative flex-1 group">
+          {generateImageMode && (
+            <div className="absolute -top-8 left-0 right-0 flex items-center justify-center">
+              <div className="px-3 py-1 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-full border border-violet-500/30 text-xs text-violet-400 flex items-center gap-1.5">
+                <Wand2 className="h-3 w-3" />
+                Mode création d'image
+              </div>
+            </div>
+          )}
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Envoyez un message..."
+            placeholder={generateImageMode ? "Décrivez l'image que vous souhaitez créer..." : "Envoyez un message..."}
             className={cn(
               "min-h-[44px] max-h-[120px] h-11 sm:h-12 transition-all duration-200 text-sm sm:text-base pr-12 resize-none rounded-xl",
-              "bg-card/60 border-border/40 focus:border-primary/50 focus:bg-card/80",
+              generateImageMode
+                ? "bg-gradient-to-r from-violet-500/5 to-fuchsia-500/5 border-violet-500/30 focus:border-violet-500/50"
+                : "bg-card/60 border-border/40 focus:border-primary/50 focus:bg-card/80",
               "focus-visible:ring-0 overflow-y-auto input-glow placeholder:text-muted-foreground/50"
             )}
             onKeyDown={(e) => {
