@@ -290,63 +290,131 @@ const Index = () => {
     shouldStopRef.current = false;
 
     try {
-      // Si on génère une image, utiliser l'edge function ComfyUI
+      // Si on génère une image, utiliser le système de polling via image_requests
       if (generateImage) {
-        console.log("Génération d'image via ComfyUI...");
+        console.log("Génération d'image via ComfyUI (polling)...");
         
         // Créer un message de progression
         const progressMessageId = (Date.now() + 1).toString();
-        const progressMessage: Message = {
-          id: progressMessageId,
-          role: "assistant",
-          content: "🎨 Génération de votre image en cours...",
-          timestamp: Date.now(),
-        };
-        
-        updateConversation(currentConversationId, {
-          messages: [...updatedMessages, progressMessage],
-        });
+        let currentMessages = [...updatedMessages];
 
         try {
+          // Appeler l'edge function pour créer la requête
           const { data, error } = await supabase.functions.invoke('generate-image', {
             body: { 
               prompt: content,
-              negativePrompt: "",
-              requestId: Date.now().toString()
+              negativePrompt: ""
             }
           });
 
           if (error) throw error;
 
-          if (data?.imageUrl) {
-            console.log("Image générée avec succès");
-            toast({
-              title: "Image générée",
-              description: "Votre image a été créée avec succès",
-            });
+          const imageRequestId = data?.requestId;
+          if (!imageRequestId) throw new Error("Pas d'ID de requête reçu");
 
-            // Créer le message assistant avec l'image générée
-            const assistantMessage: Message = {
-              id: progressMessageId,
-              role: "assistant",
-              content: [
-                { type: "text", text: `Voici l'image générée pour : "${content}"` },
-                { type: "image_url", image_url: { url: data.imageUrl } }
-              ],
-              timestamp: Date.now(),
-            };
+          console.log("Requête image créée:", imageRequestId, "Position:", data.queuePosition);
 
-            // Mettre à jour la conversation avec le message image
-            updateConversation(currentConversationId, {
-              messages: [...updatedMessages, assistantMessage],
-            });
-          } else {
-            throw new Error(data?.error || "Erreur lors de la génération");
+          // Afficher le message de progression avec la position
+          const progressMessage: Message = {
+            id: progressMessageId,
+            role: "assistant",
+            content: `🎨 Génération de votre image en cours...\n📊 Position dans la file : ${data.queuePosition}`,
+            timestamp: Date.now(),
+          };
+          currentMessages = [...currentMessages, progressMessage];
+          updateConversation(currentConversationId, { messages: [...currentMessages] });
+
+          // Polling pour suivre la progression
+          let lastStatus = "";
+          while (true) {
+            if (shouldStopRef.current) {
+              // Annuler la génération
+              await supabase
+                .from("image_requests")
+                .update({ status: "cancelled" })
+                .eq("id", imageRequestId);
+              
+              const cancelledMessage: Message = {
+                id: progressMessageId,
+                role: "assistant",
+                content: "⛔ Génération annulée",
+                timestamp: Date.now(),
+              };
+              currentMessages[currentMessages.length - 1] = cancelledMessage;
+              updateConversation(currentConversationId, { messages: [...currentMessages] });
+              break;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            const { data: pollData, error: pollError } = await supabase
+              .from("image_requests")
+              .select("status, image_base64")
+              .eq("id", imageRequestId)
+              .single();
+
+            if (pollError) throw pollError;
+
+            // Mettre à jour le message de progression selon le statut
+            if (pollData.status !== lastStatus) {
+              lastStatus = pollData.status;
+              
+              let statusMessage = "";
+              if (pollData.status === "pending") {
+                // Récupérer la position actuelle
+                const { count } = await supabase
+                  .from("image_requests")
+                  .select("*", { count: "exact", head: true })
+                  .in("status", ["pending", "generating"])
+                  .lt("created_at", new Date().toISOString());
+                
+                statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}`;
+              } else if (pollData.status === "generating") {
+                statusMessage = "🔄 Génération en cours...";
+              }
+
+              if (statusMessage) {
+                const updatedProgress: Message = {
+                  id: progressMessageId,
+                  role: "assistant",
+                  content: statusMessage,
+                  timestamp: Date.now(),
+                };
+                currentMessages[currentMessages.length - 1] = updatedProgress;
+                updateConversation(currentConversationId, { messages: [...currentMessages] });
+              }
+            }
+
+            if (pollData.status === "done" && pollData.image_base64) {
+              console.log("Image générée avec succès");
+              toast({
+                title: "Image générée",
+                description: "Votre image a été créée avec succès",
+              });
+
+              // Créer le message assistant avec l'image générée
+              const assistantMessage: Message = {
+                id: progressMessageId,
+                role: "assistant",
+                content: [
+                  { type: "text", text: `Voici l'image générée pour : "${content}"` },
+                  { type: "image_url", image_url: { url: `data:image/png;base64,${pollData.image_base64}` } }
+                ],
+                timestamp: Date.now(),
+              };
+
+              currentMessages[currentMessages.length - 1] = assistantMessage;
+              updateConversation(currentConversationId, { messages: [...currentMessages] });
+              break;
+            } else if (pollData.status === "error") {
+              throw new Error(pollData.image_base64 || "Erreur lors de la génération");
+            } else if (pollData.status === "cancelled") {
+              break;
+            }
           }
         } catch (genError: any) {
           console.error("Erreur génération image:", genError);
           
-          // Mettre à jour avec message d'erreur
           const errorMessage: Message = {
             id: progressMessageId,
             role: "assistant",
@@ -354,9 +422,12 @@ const Index = () => {
             timestamp: Date.now(),
           };
           
-          updateConversation(currentConversationId, {
-            messages: [...updatedMessages, errorMessage],
-          });
+          if (currentMessages.find(m => m.id === progressMessageId)) {
+            currentMessages[currentMessages.length - 1] = errorMessage;
+          } else {
+            currentMessages = [...currentMessages, errorMessage];
+          }
+          updateConversation(currentConversationId, { messages: [...currentMessages] });
           
           toast({
             title: "Erreur de génération",
@@ -365,7 +436,7 @@ const Index = () => {
           });
         }
 
-        // Auto-scroll to the new assistant message with smooth animation
+        // Auto-scroll
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -377,7 +448,7 @@ const Index = () => {
 
         setIsLoading(false);
         setIsConversationLoading(false);
-        return; // Sortir de la fonction
+        return;
       }
 
       // Pour les autres cas (chat normal ou import document), continuer avec Supabase
