@@ -325,7 +325,6 @@ const Index = () => {
           updateConversation(currentConversationId, { messages: [...currentMessages] });
 
           // Polling pour suivre la progression
-          let lastStatus = "";
           while (true) {
             if (shouldStopRef.current) {
               // Annuler la génération
@@ -349,41 +348,42 @@ const Index = () => {
 
             const { data: pollData, error: pollError } = await supabase
               .from("image_requests")
-              .select("status, image_base64")
+              .select("status, image_base64, progress")
               .eq("id", imageRequestId)
               .maybeSingle();
 
-            if (pollError) throw pollError;
-            if (!pollData) continue; // Pas encore de données, continuer le polling
+            if (pollError) {
+              console.error("Polling error:", pollError);
+              throw pollError;
+            }
+            if (!pollData) continue;
 
             // Mettre à jour le message de progression selon le statut
-            if (pollData.status !== lastStatus) {
-              lastStatus = pollData.status;
+            const progress = pollData.progress || 0;
+            let statusMessage = "";
+            
+            if (pollData.status === "pending") {
+              const { count } = await supabase
+                .from("image_requests")
+                .select("*", { count: "exact", head: true })
+                .in("status", ["pending", "generating"])
+                .lt("created_at", new Date().toISOString());
               
-              let statusMessage = "";
-              if (pollData.status === "pending") {
-                // Récupérer la position actuelle
-                const { count } = await supabase
-                  .from("image_requests")
-                  .select("*", { count: "exact", head: true })
-                  .in("status", ["pending", "generating"])
-                  .lt("created_at", new Date().toISOString());
-                
-                statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}`;
-              } else if (pollData.status === "generating") {
-                statusMessage = "🔄 Génération en cours...";
-              }
+              statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}`;
+            } else if (pollData.status === "generating") {
+              const progressBar = "█".repeat(Math.floor(progress / 10)) + "░".repeat(10 - Math.floor(progress / 10));
+              statusMessage = `🔄 Génération en cours...\n\n[${progressBar}] ${progress}%`;
+            }
 
-              if (statusMessage) {
-                const updatedProgress: Message = {
-                  id: progressMessageId,
-                  role: "assistant",
-                  content: statusMessage,
-                  timestamp: Date.now(),
-                };
-                currentMessages[currentMessages.length - 1] = updatedProgress;
-                updateConversation(currentConversationId, { messages: [...currentMessages] });
-              }
+            if (statusMessage) {
+              const updatedProgress: Message = {
+                id: progressMessageId,
+                role: "assistant",
+                content: statusMessage,
+                timestamp: Date.now(),
+              };
+              currentMessages[currentMessages.length - 1] = updatedProgress;
+              updateConversation(currentConversationId, { messages: [...currentMessages] });
             }
 
             if (pollData.status === "done" && pollData.image_base64) {

@@ -20,6 +20,7 @@ export type Database = {
           id: string
           image_base64: string | null
           negative: string | null
+          progress: number | null
           prompt: string
           status: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           image_base64?: string | null
           negative?: string | null
+          progress?: number | null
           prompt: string
           status?: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           id?: string
           image_base64?: string | null
           negative?: string | null
+          progress?: number | null
           prompt?: string
           status?: string
         }
