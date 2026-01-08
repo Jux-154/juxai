@@ -297,6 +297,8 @@ const Index = () => {
         // Créer un message de progression
         const progressMessageId = (Date.now() + 1).toString();
         let currentMessages = [...updatedMessages];
+        const TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+        const startTime = Date.now();
 
         try {
           // Appeler l'edge function pour créer la requête
@@ -314,11 +316,18 @@ const Index = () => {
 
           console.log("Requête image créée:", imageRequestId, "Position:", data.queuePosition);
 
-          // Afficher le message de progression avec la position
+          // Afficher le message de progression avec la position et le compteur
+          const formatTime = (ms: number) => {
+            const seconds = Math.floor(ms / 1000);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+          };
+
           const progressMessage: Message = {
             id: progressMessageId,
             role: "assistant",
-            content: `🎨 Génération de votre image en cours...\n📊 Position dans la file : ${data.queuePosition}`,
+            content: `🎨 Génération de votre image en cours...\n📊 Position dans la file : ${data.queuePosition}\n⏱️ Temps restant : ${formatTime(TIMEOUT_MS)}`,
             timestamp: Date.now(),
           };
           currentMessages = [...currentMessages, progressMessage];
@@ -326,11 +335,40 @@ const Index = () => {
 
           // Polling pour suivre la progression
           while (true) {
-            if (shouldStopRef.current) {
-              // Annuler la génération
+            const elapsed = Date.now() - startTime;
+            const remaining = TIMEOUT_MS - elapsed;
+
+            // Vérifier le timeout
+            if (remaining <= 0) {
+              console.log("Timeout atteint - annulation et suppression");
+              // Supprimer la requête de Supabase
               await supabase
                 .from("image_requests")
-                .update({ status: "cancelled" })
+                .delete()
+                .eq("id", imageRequestId);
+              
+              const timeoutMessage: Message = {
+                id: progressMessageId,
+                role: "assistant",
+                content: "⏱️ Délai dépassé (2 minutes) - Génération annulée automatiquement",
+                timestamp: Date.now(),
+              };
+              currentMessages[currentMessages.length - 1] = timeoutMessage;
+              updateConversation(currentConversationId, { messages: [...currentMessages] });
+              
+              toast({
+                title: "Délai dépassé",
+                description: "La génération a été annulée après 2 minutes",
+                variant: "destructive",
+              });
+              break;
+            }
+
+            if (shouldStopRef.current) {
+              // Annuler et supprimer la génération
+              await supabase
+                .from("image_requests")
+                .delete()
                 .eq("id", imageRequestId);
               
               const cancelledMessage: Message = {
@@ -361,6 +399,7 @@ const Index = () => {
             // Mettre à jour le message de progression selon le statut
             const progress = pollData.progress || 0;
             let statusMessage = "";
+            const timeRemaining = formatTime(remaining);
             
             if (pollData.status === "pending") {
               const { count } = await supabase
@@ -369,10 +408,10 @@ const Index = () => {
                 .in("status", ["pending", "generating"])
                 .lt("created_at", new Date().toISOString());
               
-              statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}`;
+              statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}\n⏱️ Temps restant : ${timeRemaining}`;
             } else if (pollData.status === "generating") {
               const progressBar = "█".repeat(Math.floor(progress / 10)) + "░".repeat(10 - Math.floor(progress / 10));
-              statusMessage = `🔄 Génération en cours...\n\n[${progressBar}] ${progress}%`;
+              statusMessage = `🔄 Génération en cours...\n\n[${progressBar}] ${progress}%\n⏱️ Temps restant : ${timeRemaining}`;
             }
 
             if (statusMessage) {
@@ -410,6 +449,11 @@ const Index = () => {
             } else if (pollData.status === "error") {
               throw new Error(pollData.image_base64 || "Erreur lors de la génération");
             } else if (pollData.status === "cancelled") {
+              // Supprimer la requête annulée
+              await supabase
+                .from("image_requests")
+                .delete()
+                .eq("id", imageRequestId);
               break;
             }
           }
