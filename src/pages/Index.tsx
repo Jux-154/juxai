@@ -1,76 +1,51 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChatMessage } from "@/components/ChatMessage";
-import { ChatInput } from "@/components/ChatInput";
-import { ConversationItem } from "@/components/ConversationItem";
 import { SidebarToggle } from "@/components/SidebarToggle";
-import { DownloadCard } from "@/components/DownloadCard";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
-import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
-import { PromptSuggestions } from "@/components/PromptSuggestions";
-import { TypingIndicator } from "@/components/TypingIndicator";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Plus, LogOut, User as UserIcon, X, MessageSquare } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { LogOut, X, Send, Mic, MicOff, ChevronLeft, ChevronRight, Download, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { scaleVariants, slideInVariants, floatingVariants, useIntersectionObserver, staggerContainer } from "@/lib/animations";
 
-interface SearchResult {
-  title: string;
-  snippet: string;
-  url: string;
-  date?: string;
-  score?: number;
-}
-
-interface Message {
+interface GeneratedImage {
   id: string;
-  role: "user" | "assistant";
-  content: string | MessageContent[];
-  timestamp: number;
-  searchResults?: SearchResult[];
-}
-
-interface MessageContent {
-  type: "text" | "image_url";
-  text?: string;
-  image_url?: { url: string };
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
+  prompt: string;
+  imageBase64: string;
   createdAt: number;
-  updatedAt: number;
 }
+
+// Style presets for quick access
+const STYLE_PRESETS = [
+  { id: "croquis", name: "Croquis", prompt: "pencil sketch style, hand-drawn, artistic" },
+  { id: "dramatique", name: "Dramatique", prompt: "dramatic lighting, cinematic, high contrast" },
+  { id: "plushie", name: "Plushie", prompt: "cute plush toy style, soft, adorable, 3D render" },
+  { id: "retro", name: "Rétro", prompt: "retro anime style, 80s, vintage colors" },
+  { id: "figurine", name: "Figurine", prompt: "3D figurine, toy style, detailed miniature" },
+  { id: "doodle", name: "Doodle", prompt: "doodle art style, hand-drawn, sketchy" },
+  { id: "photoreal", name: "Photoréaliste", prompt: "photorealistic, highly detailed, 8k" },
+  { id: "watercolor", name: "Aquarelle", prompt: "watercolor painting style, soft colors, artistic" },
+];
 
 const Index = () => {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("liquid/lfm2-1.2b");
-
-  const currentRequestIdRef = useRef<string | null>(null);
-  const shouldStopRef = useRef(false);
-
-  const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
+  const [prompt, setPrompt] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [styleScrollIndex, setStyleScrollIndex] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const shouldStopRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // État pour la génération d'image avec loader visuel
   const [imageGenState, setImageGenState] = useState<{
@@ -81,710 +56,225 @@ const Index = () => {
     queuePosition: number;
   } | null>(null);
 
-  // Auth effect
+  // Auth effect - compte obligatoire
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          // User is logged in - not a guest
-          setIsGuest(false);
-          localStorage.removeItem("juxGuestMode");
-          // Restore saved model or default to advanced
-          const savedModel = localStorage.getItem("juxSelectedModel");
-          setSelectedModel(savedModel || "google/gemma-3-4b");
+        if (!session?.user) {
+          navigate("/auth");
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (!session) {
-        // Check if guest mode
-        const guestMode = localStorage.getItem("juxGuestMode");
-        if (guestMode === "true") {
-          setIsGuest(true);
-          setSelectedModel("liquid/lfm2-1.2b");
-        } else {
-          // Not logged in and not a guest - redirect to auth
-          navigate("/auth");
-        }
-      } else {
-        setIsGuest(false);
-        const savedModel = localStorage.getItem("juxSelectedModel");
-        setSelectedModel(savedModel || "google/gemma-3-4b");
+        navigate("/auth");
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Charger les images générées depuis localStorage
   useEffect(() => {
-    loadConversations();
+    const stored = localStorage.getItem("jux-generated-images");
+    if (stored) {
+      setGeneratedImages(JSON.parse(stored));
+    }
   }, []);
 
-  const loadConversations = () => {
-    const stored = localStorage.getItem("conversations");
-    const loadedConversations = stored ? JSON.parse(stored) : [];
-    setConversations(loadedConversations);
-    if (loadedConversations.length === 0) {
-      createNewChat();
-    } else {
-      setCurrentConversationId(loadedConversations[0].id);
-    }
+  // Sauvegarder les images générées
+  const saveImages = (images: GeneratedImage[]) => {
+    localStorage.setItem("jux-generated-images", JSON.stringify(images));
+    setGeneratedImages(images);
   };
 
-  const saveConversations = (convs: Conversation[]) => {
-    localStorage.setItem("conversations", JSON.stringify(convs));
-    setConversations(convs);
-  };
-
-  const createNewChat = () => {
-    const newConv: Conversation = {
-      id: Date.now().toString(),
-      title: "Nouvelle conversation",
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const updated = [newConv, ...conversations];
-    saveConversations(updated);
-    setCurrentConversationId(newConv.id);
-    setIsSidebarOpen(false);
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model);
-    localStorage.setItem("juxSelectedModel", model);
-  };
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem("juxGuestMode");
-    localStorage.removeItem("juxSelectedModel");
-    setUser(null);
-    setSession(null);
-    setIsGuest(false);
     navigate("/auth");
   };
 
-  const handleGoToAuth = () => {
-    navigate("/auth");
-  };
-
-  const getCurrentConversation = () => {
-    return conversations.find((c) => c.id === currentConversationId);
-  };
-
-  const updateConversation = (id: string, updates: Partial<Conversation>) => {
-    const updated = conversations.map((c) =>
-      c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c
-    );
-    saveConversations(updated);
-  };
-
-  const handleRenameConversation = (id: string, newTitle: string) => {
-    updateConversation(id, { title: newTitle });
-    setIsSidebarOpen(false);
-    toast({
-      title: "Conversation renommée",
-      description: `Le titre a été changé en "${newTitle}"`,
-    });
-  };
-
-  const handleDeleteConversation = (id: string) => {
-    if (conversations.length === 1) {
-      // Si c'est la dernière conversation, créer une nouvelle d'abord
-      const newConv: Conversation = {
-        id: (Date.now() + 1).toString(),
-        title: "Nouvelle conversation",
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      const updated = [newConv];
-      saveConversations(updated);
-      setCurrentConversationId(newConv.id);
-    } else {
-      const filtered = conversations.filter((c) => c.id !== id);
-      saveConversations(filtered);
-
-      if (id === currentConversationId) {
-        setCurrentConversationId(filtered[0].id);
+  const handleStyleClick = (style: typeof STYLE_PRESETS[0]) => {
+    setPrompt(prev => {
+      if (prev.trim()) {
+        return `${prev.trim()}, ${style.prompt}`;
       }
-    }
-
-    setIsSidebarOpen(false);
-    toast({
-      title: "Conversation supprimée",
-      description: "La conversation a été supprimée avec succès",
+      return style.prompt;
     });
   };
 
-  const handleStopGeneration = async () => {
-    shouldStopRef.current = true;
-    
-    // Mettre à jour le status dans Supabase pour arrêter le streaming côté serveur
-    if (currentRequestIdRef.current) {
-      try {
-        await supabase
-          .from("requests")
-          .update({ status: "cancelled" })
-          .eq("id", currentRequestIdRef.current);
-      } catch (error) {
-        console.error("Erreur lors de l'arrêt:", error);
-      }
-    }
-    
-    setIsLoading(false);
-    setIsConversationLoading(false);
-    toast({
-      title: "Génération arrêtée",
-      description: "La génération a été interrompue",
-    });
-  };
-
-  const handleSendMessage = async (content: string, imageBase64?: string, useDocumentImport?: boolean, generateImage?: boolean, documentContents?: { name: string; type: string; content: string; base64: boolean }[]) => {
-    if (!currentConversationId) return;
-
-    let userMessage: Message;
-    if (imageBase64) {
-      userMessage = {
-        id: Date.now().toString(),
-        role: "user",
-        content: [
-          { type: "text", text: content },
-          { type: "image_url", image_url: { url: imageBase64 } },
-        ],
-        timestamp: Date.now(),
-      };
+  const scrollStyles = (direction: "left" | "right") => {
+    const maxIndex = Math.max(0, STYLE_PRESETS.length - 4);
+    if (direction === "left") {
+      setStyleScrollIndex(Math.max(0, styleScrollIndex - 1));
     } else {
-      userMessage = {
-        id: Date.now().toString(),
-        role: "user",
-        content,
-        timestamp: Date.now(),
-      };
+      setStyleScrollIndex(Math.min(maxIndex, styleScrollIndex + 1));
+    }
+  };
+
+  const startVoiceRecording = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast({ title: "Non supporté", description: "La reconnaissance vocale n'est pas disponible", variant: "destructive" });
+      return;
     }
 
-    const conv = getCurrentConversation();
-    if (!conv) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'fr-FR';
 
-    const updatedMessages = [...conv.messages, userMessage];
-    updateConversation(currentConversationId, { messages: updatedMessages });
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setPrompt(prev => prev + (prev ? ' ' : '') + transcript);
+    };
+    recognition.onerror = () => setIsRecording(false);
+    recognition.onend = () => setIsRecording(false);
 
-    // Trigger title animation sequence for new conversations
-    if (conv.messages.length === 0) {
-      // Immediately clear the title when first message is sent
-      updateConversation(currentConversationId, { title: "" });
-      setTitleAnimationState('removing');
-      setTimeout(() => setTitleAnimationState('waiting'), 300);
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!prompt.trim() || isLoading) return;
 
     setIsLoading(true);
-    setIsConversationLoading(true);
     shouldStopRef.current = false;
 
+    const TIMEOUT_MS = 2 * 60 * 1000;
+    const startTime = Date.now();
+
     try {
-      // Si on génère une image, utiliser le système de polling via image_requests
-      if (generateImage) {
-        console.log("Génération d'image via ComfyUI (polling)...");
-        
-        // Créer un message de progression
-        const progressMessageId = (Date.now() + 1).toString();
-        let currentMessages = [...updatedMessages];
-        const TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
-        const startTime = Date.now();
+      const { data, error } = await supabase.functions.invoke('generate-image', {
+        body: { prompt: prompt.trim(), negativePrompt: "" }
+      });
 
-        try {
-          // Appeler l'edge function pour créer la requête
-          const { data, error } = await supabase.functions.invoke('generate-image', {
-            body: { 
-              prompt: content,
-              negativePrompt: ""
-            }
-          });
+      if (error) throw error;
 
-          if (error) throw error;
+      const imageRequestId = data?.requestId;
+      if (!imageRequestId) throw new Error("Pas d'ID de requête reçu");
 
-          const imageRequestId = data?.requestId;
-          if (!imageRequestId) throw new Error("Pas d'ID de requête reçu");
-
-          console.log("Requête image créée:", imageRequestId, "Position:", data.queuePosition);
-
-          // Afficher le message de progression avec la position et le compteur
-          const formatTime = (ms: number) => {
-            const seconds = Math.floor(ms / 1000);
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-          };
-
-          const progressMessage: Message = {
-            id: progressMessageId,
-            role: "assistant",
-            content: `🎨 Génération de votre image en cours...\n📊 Position dans la file : ${data.queuePosition}\n⏱️ Temps restant : ${formatTime(TIMEOUT_MS)}`,
-            timestamp: Date.now(),
-          };
-          currentMessages = [...currentMessages, progressMessage];
-          updateConversation(currentConversationId, { messages: [...currentMessages] });
-
-          // Polling pour suivre la progression
-          while (true) {
-            const elapsed = Date.now() - startTime;
-            const remaining = TIMEOUT_MS - elapsed;
-
-            // Vérifier le timeout
-            if (remaining <= 0) {
-              console.log("Timeout atteint - annulation et suppression");
-              setImageGenState(null);
-              // Supprimer la requête de Supabase
-              await supabase
-                .from("image_requests")
-                .delete()
-                .eq("id", imageRequestId);
-              
-              const timeoutMessage: Message = {
-                id: progressMessageId,
-                role: "assistant",
-                content: "⏱️ Délai dépassé (2 minutes) - Génération annulée automatiquement",
-                timestamp: Date.now(),
-              };
-              currentMessages[currentMessages.length - 1] = timeoutMessage;
-              updateConversation(currentConversationId, { messages: [...currentMessages] });
-              
-              toast({
-                title: "Délai dépassé",
-                description: "La génération a été annulée après 2 minutes",
-                variant: "destructive",
-              });
-              break;
-            }
-
-            if (shouldStopRef.current) {
-              setImageGenState(null);
-              // Annuler et supprimer la génération
-              await supabase
-                .from("image_requests")
-                .delete()
-                .eq("id", imageRequestId);
-              
-              const cancelledMessage: Message = {
-                id: progressMessageId,
-                role: "assistant",
-                content: "⛔ Génération annulée",
-                timestamp: Date.now(),
-              };
-              currentMessages[currentMessages.length - 1] = cancelledMessage;
-              updateConversation(currentConversationId, { messages: [...currentMessages] });
-              break;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            const { data: pollData, error: pollError } = await supabase
-              .from("image_requests")
-              .select("status, image_base64, progress")
-              .eq("id", imageRequestId)
-              .maybeSingle();
-
-            if (pollError) {
-              console.error("Polling error:", pollError);
-              throw pollError;
-            }
-            if (!pollData) continue;
-
-            // Mettre à jour le message de progression selon le statut
-            const progress = pollData.progress || 0;
-            let queuePosition = 1;
-            
-            if (pollData.status === "pending") {
-              const { count } = await supabase
-                .from("image_requests")
-                .select("*", { count: "exact", head: true })
-                .in("status", ["pending", "generating"])
-                .lt("created_at", new Date().toISOString());
-              
-              queuePosition = (count || 0) + 1;
-            }
-
-            // Mettre à jour l'état du loader visuel
-            setImageGenState({
-              isGenerating: true,
-              progress,
-              timeRemaining: Math.max(0, remaining / 1000),
-              status: pollData.status === "generating" ? "generating" : "pending",
-              queuePosition,
-            });
-
-            // Message simple pour le chat (le loader visuel affiche les détails)
-            const statusMessage = "⏳ Génération d'image en cours...";
-            const updatedProgress: Message = {
-              id: progressMessageId,
-              role: "assistant",
-              content: statusMessage,
-              timestamp: Date.now(),
-            };
-            currentMessages[currentMessages.length - 1] = updatedProgress;
-            updateConversation(currentConversationId, { messages: [...currentMessages] });
-
-            if (pollData.status === "done" && pollData.image_base64) {
-              console.log("Image générée avec succès");
-              setImageGenState(null);
-              toast({
-                title: "Image générée",
-                description: "Votre image a été créée avec succès",
-              });
-
-              // Créer le message assistant avec l'image générée
-              const assistantMessage: Message = {
-                id: progressMessageId,
-                role: "assistant",
-                content: [
-                  { type: "text", text: `Voici l'image générée pour : "${content}"` },
-                  { type: "image_url", image_url: { url: `data:image/png;base64,${pollData.image_base64}` } }
-                ],
-                timestamp: Date.now(),
-              };
-
-              currentMessages[currentMessages.length - 1] = assistantMessage;
-              updateConversation(currentConversationId, { messages: [...currentMessages] });
-              break;
-            } else if (pollData.status === "error") {
-              setImageGenState(null);
-              throw new Error(pollData.image_base64 || "Erreur lors de la génération");
-            } else if (pollData.status === "cancelled") {
-              setImageGenState(null);
-              // Supprimer la requête annulée
-              await supabase
-                .from("image_requests")
-                .delete()
-                .eq("id", imageRequestId);
-              break;
-            }
-          }
-        } catch (genError: any) {
-          console.error("Erreur génération image:", genError);
-          setImageGenState(null);
-          
-          const errorMessage: Message = {
-            id: progressMessageId,
-            role: "assistant",
-            content: `❌ Erreur lors de la génération de l'image: ${genError.message || "Erreur inconnue"}`,
-            timestamp: Date.now(),
-          };
-          
-          if (currentMessages.find(m => m.id === progressMessageId)) {
-            currentMessages[currentMessages.length - 1] = errorMessage;
-          } else {
-            currentMessages = [...currentMessages, errorMessage];
-          }
-          updateConversation(currentConversationId, { messages: [...currentMessages] });
-          
-          toast({
-            title: "Erreur de génération",
-            description: genError.message || "Impossible de générer l'image",
-            variant: "destructive",
-          });
-        }
-
-        // Auto-scroll
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (scrollContainer) {
-              scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-            }
-          }
-        }, 100);
-
-        setIsLoading(false);
-        setIsConversationLoading(false);
-        return;
-      }
-
-      // Pour les autres cas (chat normal ou import document), continuer avec Supabase
-      // Récupérer les paramètres de personnalisation
-      let personalizationContext = "";
-      const savedPersonalization = localStorage.getItem("juxPersonalization");
-      if (savedPersonalization) {
-        try {
-          const settings = JSON.parse(savedPersonalization);
-          const parts: string[] = [];
-          
-          if (settings.userName) {
-            parts.push(`L'utilisateur s'appelle "${settings.userName}". Utilise ce nom pour t'adresser à lui.`);
-          }
-          if (settings.userInfo) {
-            parts.push(`Informations sur l'utilisateur : ${settings.userInfo}`);
-          }
-          if (settings.responseStyle && settings.responseStyle !== "default") {
-            const styleDescriptions: Record<string, string> = {
-              "concis": "Réponds de manière concise, courte et directe. Va droit au but.",
-              "socratique": "Guide l'utilisateur avec des questions d'exploration plutôt que des réponses directes.",
-              "formel": "Utilise un ton académique et professionnel dans tes réponses."
-            };
-            if (styleDescriptions[settings.responseStyle]) {
-              parts.push(styleDescriptions[settings.responseStyle]);
-            }
-          }
-          if (settings.customInstruction) {
-            parts.push(`Instructions personnalisées : ${settings.customInstruction}`);
-          }
-          
-          if (parts.length > 0) {
-            personalizationContext = "=== PERSONNALISATION ===\n" + parts.join("\n") + "\n=== FIN PERSONNALISATION ===\n\n";
-          }
-        } catch (e) {
-          console.error("Erreur lecture personnalisation:", e);
-        }
-      }
-
-      // Construire l'historique de conversation (derniers 20 messages)
-      const historyMessages = conv.messages.slice(-20); // Prendre les 20 derniers messages avant le nouveau
-      let conversationHistory = "";
-      if (historyMessages.length > 0) {
-        conversationHistory = "Voici les échanges précédents dans cette conversation :\n\n";
-        historyMessages.forEach((msg) => {
-          const roleLabel = msg.role === "user" ? "Utilisateur" : "Assistant";
-          let msgContent = "";
-          if (typeof msg.content === "string") {
-            msgContent = msg.content;
-          } else if (Array.isArray(msg.content)) {
-            // Extraire seulement le texte, ignorer les images pour l'historique
-            msgContent = msg.content
-              .filter(part => part.type === "text" && part.text)
-              .map(part => part.text)
-              .join(" ");
-          }
-          if (msgContent.trim()) {
-            conversationHistory += `${roleLabel}: ${msgContent}\n\n`;
-          }
-        });
-        conversationHistory += "Nouvelle question :\n";
-      }
-
-      // Préparer le prompt pour Supabase avec personnalisation et historique
-      const currentPrompt = imageBase64
-        ? `${content} [Image: ${imageBase64}]`
-        : content;
-      const fullPrompt = personalizationContext + conversationHistory + currentPrompt;
-
-      // Insérer la requête dans la table requests
-      const { data: insertData, error: insertError } = await supabase
-        .from("requests")
-        .insert([
-          {
-            prompt: fullPrompt,
-            imput_message: { 
-              text: content, 
-              has_documents: useDocumentImport || false,
-              documents: documentContents || []
-            },
-            status: "pending",
-            use_web_search: false,
-            model: selectedModel,
-          },
-        ])
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      const requestId = insertData.id;
-      currentRequestIdRef.current = requestId;
-      console.log("Requête insérée:", requestId);
-
-      // Poller pour la réponse avec streaming en temps réel
-      let response = "";
-      let streamingMessageId = (Date.now() + 1).toString();
-      let isStreaming = false;
-      let lastResponse = "";
-      let currentMessages = [...updatedMessages]; // Track messages locally
-
+      // Polling pour suivre la progression
       while (true) {
-        // Vérifier si l'utilisateur a demandé l'arrêt
-        if (shouldStopRef.current) {
+        const elapsed = Date.now() - startTime;
+        const remaining = TIMEOUT_MS - elapsed;
+
+        if (remaining <= 0) {
+          setImageGenState(null);
+          await supabase.from("image_requests").delete().eq("id", imageRequestId);
+          toast({ title: "Délai dépassé", description: "La génération a été annulée après 2 minutes", variant: "destructive" });
           break;
         }
-        
-        // Polling plus rapide pendant le streaming (80ms), sinon 400ms
-        await new Promise((resolve) => setTimeout(resolve, isStreaming ? 80 : 400));
+
+        if (shouldStopRef.current) {
+          setImageGenState(null);
+          await supabase.from("image_requests").delete().eq("id", imageRequestId);
+          toast({ title: "Annulé", description: "Génération annulée" });
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         const { data: pollData, error: pollError } = await supabase
-          .from("requests")
-          .select("response, status, search_results")
-          .eq("id", requestId)
-          .single();
+          .from("image_requests")
+          .select("status, image_base64, progress")
+          .eq("id", imageRequestId)
+          .maybeSingle();
 
         if (pollError) throw pollError;
+        if (!pollData) continue;
 
-        // Gérer le streaming en temps réel
-        if ((pollData.status === "streaming" || pollData.status === "pending") && pollData.response) {
-          isStreaming = true;
-          const currentResponse = pollData.response;
-          
-          // Mettre à jour seulement si la réponse a changé
-          if (currentResponse !== lastResponse) {
-            lastResponse = currentResponse;
-            
-            // Créer ou mettre à jour le message assistant en streaming
-            const streamingMessage: Message = {
-              id: streamingMessageId,
-              role: "assistant",
-              content: currentResponse,
-              timestamp: Date.now(),
-            };
+        const progress = pollData.progress || 0;
+        let queuePosition = 1;
 
-            // Trouver si le message assistant existe déjà
-            const existingIndex = currentMessages.findIndex(m => m.id === streamingMessageId);
-            
-            if (existingIndex >= 0) {
-              currentMessages[existingIndex] = streamingMessage;
-            } else {
-              currentMessages = [...currentMessages, streamingMessage];
-            }
-            
-            // Mettre à jour immédiatement la conversation
-            updateConversation(currentConversationId, { messages: [...currentMessages] });
-            
-            // Auto-scroll pendant le streaming seulement si l'utilisateur est déjà en bas
-            if (scrollAreaRef.current) {
-              const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-              if (scrollContainer) {
-                const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
-                if (isNearBottom) {
-                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-                }
-              }
-            }
-          }
+        if (pollData.status === "pending") {
+          const { count } = await supabase
+            .from("image_requests")
+            .select("*", { count: "exact", head: true })
+            .in("status", ["pending", "generating"])
+            .lt("created_at", new Date().toISOString());
+          queuePosition = (count || 0) + 1;
         }
 
-        if (pollData.status === "done") {
-          response = pollData.response || "";
+        setImageGenState({
+          isGenerating: true,
+          progress,
+          timeRemaining: Math.max(0, remaining / 1000),
+          status: pollData.status === "generating" ? "generating" : "pending",
+          queuePosition,
+        });
 
-          // Vérifier si la réponse contient titre et contenu (nouvelle conversation)
-          let finalContent = response;
-          let conversationTitle = null;
-
-          try {
-            const parsedResponse = JSON.parse(response);
-            if (parsedResponse.title && parsedResponse.content) {
-              conversationTitle = parsedResponse.title;
-              finalContent = parsedResponse.content;
-            }
-          } catch (e) {
-            // Pas de JSON, réponse normale
-          }
-
-          // Stocker les résultats de recherche si disponibles
-          const searchResults = pollData.search_results
-            ? (pollData.search_results as any).results
-            : undefined;
-
-          // Créer le message assistant final avec les sources
-          const assistantMessage: Message = {
-            id: streamingMessageId,
-            role: "assistant",
-            content: finalContent,
-            timestamp: Date.now(),
-            searchResults: searchResults,
+        if (pollData.status === "done" && pollData.image_base64) {
+          setImageGenState(null);
+          
+          const newImage: GeneratedImage = {
+            id: Date.now().toString(),
+            prompt: prompt.trim(),
+            imageBase64: pollData.image_base64,
+            createdAt: Date.now(),
           };
-
-          // Mettre à jour les messages finaux
-          const existingIndex = currentMessages.findIndex(m => m.id === streamingMessageId);
-          if (existingIndex >= 0) {
-            currentMessages[existingIndex] = assistantMessage;
-          } else {
-            currentMessages = [...currentMessages, assistantMessage];
-          }
-
-          const updates: Partial<Conversation> = {
-            messages: [...currentMessages],
-          };
-
-          if (conversationTitle) {
-            if (titleAnimationState === 'waiting') {
-              setTitleAnimationState('completing');
-              updates.title = conversationTitle;
-              updateConversation(currentConversationId, updates);
-              setTimeout(() => {
-                setTitleAnimationState('removing');
-                setTimeout(() => {
-                  setTitleAnimationState('arriving');
-                  setTimeout(() => setTitleAnimationState('idle'), 500);
-                }, 300);
-              }, 500);
-            } else {
-              setTitleAnimationState('removing');
-              setTimeout(() => {
-                updates.title = conversationTitle;
-                updateConversation(currentConversationId, updates);
-                setTitleAnimationState('arriving');
-                setTimeout(() => setTitleAnimationState('idle'), 500);
-              }, 300);
-            }
-          } else {
-            updateConversation(currentConversationId, updates);
-          }
-
-          // Auto-scroll final seulement si l'utilisateur est déjà en bas
-          setTimeout(() => {
-            if (scrollAreaRef.current) {
-              const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-              if (scrollContainer) {
-                const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 150;
-                if (isNearBottom) {
-                  scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-                }
-              }
-            }
-          }, 100);
-
+          
+          saveImages([newImage, ...generatedImages]);
+          setPrompt("");
+          toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
           break;
         } else if (pollData.status === "error") {
-          throw new Error(pollData.response || "Erreur inconnue");
+          setImageGenState(null);
+          throw new Error(pollData.image_base64 || "Erreur lors de la génération");
         } else if (pollData.status === "cancelled") {
+          setImageGenState(null);
+          await supabase.from("image_requests").delete().eq("id", imageRequestId);
           break;
         }
       }
-
     } catch (error: any) {
-      console.error("Erreur:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de générer une réponse",
-        variant: "destructive",
-      });
-
-      // Remove the user message if there was an error
-      updateConversation(currentConversationId, {
-        messages: conv.messages,
-      });
+      toast({ title: "Erreur", description: error.message || "Impossible de générer l'image", variant: "destructive" });
+      setImageGenState(null);
     } finally {
       setIsLoading(false);
-      setIsConversationLoading(false);
-      currentRequestIdRef.current = null;
-      shouldStopRef.current = false;
     }
   };
 
-  const currentMessages = getCurrentConversation()?.messages || [];
+  const handleStopGeneration = () => {
+    shouldStopRef.current = true;
+  };
+
+  const handleDeleteImage = (id: string) => {
+    const updated = generatedImages.filter(img => img.id !== id);
+    saveImages(updated);
+    toast({ title: "Image supprimée" });
+  };
+
+  const handleDownloadImage = (image: GeneratedImage) => {
+    const link = document.createElement('a');
+    link.href = `data:image/png;base64,${image.imageBase64}`;
+    link.download = `jux-image-${image.id}.png`;
+    link.click();
+  };
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [prompt]);
 
   return (
     <div className="flex h-screen bg-background relative overflow-hidden">
@@ -797,322 +287,281 @@ const Index = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999]"
             onClick={closeSidebar}
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Sidebar simplifié */}
       <motion.div 
-        className={`w-80 sm:w-[340px] border-r border-sidebar-border/30 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
+        className={`w-72 border-r border-sidebar-border/30 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
-        {/* Sidebar Header with Logo */}
         <div className="p-4 border-b border-sidebar-border/30">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl blur-md opacity-50" />
                 <div className="relative h-10 w-10 rounded-xl overflow-hidden">
-                  <img
-                    src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
-                    alt="Jux"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src="https://i.ibb.co/Kzs6bzhM/Jux.jpg" alt="Jux" className="w-full h-full object-cover" />
                 </div>
               </div>
               <div>
                 <h1 className="font-bold text-lg text-foreground">Jux AI</h1>
-                <p className="text-xs text-muted-foreground">Votre assistant intelligent</p>
+                <p className="text-xs text-muted-foreground">Génération d'images</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={closeSidebar}
-              className="h-8 w-8 rounded-lg hover:bg-accent"
-            >
+            <Button variant="ghost" size="icon" onClick={closeSidebar} className="h-8 w-8 rounded-lg">
               <X className="h-4 w-4" />
             </Button>
           </div>
-          
-          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-            <Button
-              onClick={createNewChat}
-              className="w-full h-11 bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-secondary text-primary-foreground font-medium rounded-xl glow-button transition-all duration-300 gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Nouvelle conversation
-            </Button>
-          </motion.div>
         </div>
         
-        {/* Conversations List */}
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-0.5">
-            <div className="px-3 py-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Historique
-              </span>
-            </div>
-            {conversations.map((conv, index) => (
-              <motion.div
-                key={conv.id}
-                initial={{ opacity: 0, x: -15 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.02, duration: 0.2 }}
-              >
-                <ConversationItem
-                  id={conv.id}
-                  title={conv.title}
-                  isActive={conv.id === currentConversationId}
-                  onClick={() => {
-                    setCurrentConversationId(conv.id);
-                    closeSidebar();
-                  }}
-                  onRename={handleRenameConversation}
-                  onDelete={handleDeleteConversation}
-                  isMobile={true}
-                  animationState={conv.id === currentConversationId ? titleAnimationState : 'idle'}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </ScrollArea>
-        
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
-          {/* Model Selector */}
-          <div className="flex items-center">
-            <ModelSelector
-              isGuest={isGuest}
-              selectedModel={selectedModel}
-              onModelChange={handleModelChange}
-            />
+        {/* Infos utilisateur */}
+        <div className="flex-1 p-4">
+          <div className="glass-card rounded-xl p-4 mb-4">
+            <p className="text-sm text-muted-foreground mb-1">Connecté en tant que</p>
+            <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
           </div>
           
-          {/* Auth Status & Actions */}
-          <div className="flex items-center gap-2 pt-3 border-t border-sidebar-border/20">
+          <div className="glass-card rounded-xl p-4">
+            <p className="text-sm text-muted-foreground mb-2">Images générées</p>
+            <p className="text-2xl font-bold text-primary">{generatedImages.length}</p>
+          </div>
+        </div>
+        
+        {/* Footer Sidebar */}
+        <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
+          <div className="flex items-center gap-2">
             <Settings />
             <Updates />
             <div className="flex-1" />
-            {user ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-destructive/10 transition-colors"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Déconnexion
-              </Button>
-            ) : isGuest ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGoToAuth}
-                className="text-xs gap-1.5 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
-              >
-                <UserIcon className="h-3.5 w-3.5" />
-                Se connecter
-              </Button>
-            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-destructive/10"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Déconnexion
+            </Button>
           </div>
         </div>
       </motion.div>
 
-      {/* Main Chat */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Area */}
-        <div className="flex-1 overflow-hidden relative">
-          {/* Subtle gradient overlay at top */}
-          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
-          
-          <ScrollArea ref={scrollAreaRef} className="h-full">
-            <div className="max-w-4xl mx-auto">
-              {currentMessages.length === 0 ? (
-                <motion.div
-                  className="flex flex-col items-center justify-center h-full min-h-[600px] text-center px-4 py-8"
-                  variants={staggerContainer}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {/* Animated background orbs */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <motion.div 
-                      className="absolute top-1/4 left-1/4 w-80 h-80 bg-primary/8 rounded-full blur-3xl"
-                      animate={{ 
-                        x: [0, 60, 0], 
-                        y: [0, 40, 0],
-                        scale: [1, 1.15, 1]
-                      }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <motion.div 
-                      className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/6 rounded-full blur-3xl"
-                      animate={{ 
-                        x: [0, -50, 0], 
-                        y: [0, -30, 0],
-                        scale: [1, 1.2, 1]
-                      }}
-                      transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                    />
-                  </div>
-                  
-                  <motion.div
-                    variants={slideInVariants.slideInUp}
-                    className="relative z-10"
-                  >
-                    {/* Large Logo */}
-                    <motion.div
-                      className="mb-8 flex justify-center"
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 180, damping: 12, delay: 0.1 }}
+        <ScrollArea className="flex-1">
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            {/* Header */}
+            <motion.div 
+              className="text-center mb-8"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Images
+              </h1>
+              <p className="text-muted-foreground">Décrivez l'image que vous souhaitez créer</p>
+            </motion.div>
+
+            {/* Input Zone */}
+            <motion.div 
+              className="mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="glass-card rounded-2xl p-4">
+                <div className="flex items-end gap-3">
+                  <Textarea
+                    ref={textareaRef}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Décrire une nouvelle image..."
+                    className="flex-1 min-h-[48px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 text-foreground placeholder:text-muted-foreground/50"
+                    disabled={isLoading}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768) {
+                        e.preventDefault();
+                        handleGenerateImage();
+                      }
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                      className={`h-10 w-10 rounded-xl ${isRecording ? "bg-destructive/15 text-destructive" : "text-muted-foreground hover:text-primary"}`}
+                      disabled={isLoading}
                     >
-                      <div className="relative">
-                        <motion.div 
-                          className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-3xl blur-2xl"
-                          animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1] }}
-                          transition={{ duration: 3, repeat: Infinity }}
-                        />
-                        <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-3xl overflow-hidden border-2 border-primary/20 shadow-2xl">
-                          <img
-                            src="https://i.ibb.co/Kzs6bzhM/Jux.jpg"
-                            alt="Jux"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                      {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    </Button>
+                    {isLoading ? (
+                      <Button
+                        onClick={handleStopGeneration}
+                        size="icon"
+                        className="h-10 w-10 rounded-xl bg-destructive hover:bg-destructive/90"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleGenerateImage}
+                        size="icon"
+                        disabled={!prompt.trim()}
+                        className="h-10 w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
+                      >
+                        <Send className="h-5 w-5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Loader visuel */}
+            <AnimatePresence>
+              {imageGenState?.isGenerating && (
+                <motion.div
+                  className="mb-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <ImageGenerationLoader
+                    progress={imageGenState.progress}
+                    timeRemaining={imageGenState.timeRemaining}
+                    status={imageGenState.status}
+                    queuePosition={imageGenState.queuePosition}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Style Presets */}
+            <motion.div 
+              className="mb-10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Appliquez un style</h2>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    onClick={() => scrollStyles("left")}
+                    disabled={styleScrollIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    onClick={() => scrollStyles("right")}
+                    disabled={styleScrollIndex >= STYLE_PRESETS.length - 4}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="overflow-hidden">
+                <motion.div 
+                  className="flex gap-4"
+                  animate={{ x: -styleScrollIndex * 140 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                  {STYLE_PRESETS.map((style) => (
+                    <motion.button
+                      key={style.id}
+                      onClick={() => handleStyleClick(style)}
+                      className="flex-shrink-0 w-28 sm:w-32 group"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <div className="aspect-square rounded-xl bg-gradient-to-br from-card to-muted border border-border/50 mb-2 flex items-center justify-center group-hover:border-primary/50 transition-colors overflow-hidden">
+                        <span className="text-3xl">🎨</span>
+                      </div>
+                      <p className="text-sm text-center text-foreground/80 group-hover:text-foreground">{style.name}</p>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Mes Images (Galerie) */}
+            {generatedImages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <h2 className="text-lg font-semibold text-foreground mb-4">Mes images</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {generatedImages.map((image) => (
+                    <motion.div
+                      key={image.id}
+                      className="group relative aspect-square rounded-xl overflow-hidden border border-border/50 hover:border-primary/50 transition-colors"
+                      whileHover={{ scale: 1.02 }}
+                    >
+                      <img
+                        src={`data:image/png;base64,${image.imageBase64}`}
+                        alt={image.prompt}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => handleDownloadImage(image)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => handleDeleteImage(image.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-xs text-white truncate">{image.prompt}</p>
                       </div>
                     </motion.div>
-                    
-                    <motion.h1
-                      className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent"
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                    >
-                      Bonjour !
-                    </motion.h1>
-                  </motion.div>
-
-                  <motion.p
-                    className="text-muted-foreground max-w-md mb-10 text-lg sm:text-xl"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                  >
-                    Comment puis-je vous aider aujourd'hui ?
-                  </motion.p>
-
-                  {/* Prompt Suggestions */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                    className="relative z-10 mb-8"
-                  >
-                    <PromptSuggestions 
-                      onSelect={(prompt) => {
-                        const input = document.querySelector('textarea') as HTMLTextAreaElement;
-                        if (input) {
-                          input.value = prompt;
-                          input.focus();
-                          input.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                      }}
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.9 }}
-                    className="relative z-10"
-                  >
-                    <DownloadCard />
-                  </motion.div>
-                </motion.div>
-              ) : (
-                <div className="space-y-0 pb-4">
-                  <AnimatePresence mode="popLayout">
-                    {currentMessages.map((message, index) => (
-                      <motion.div
-                        key={message.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index === currentMessages.length - 1 ? 0 : 0 }}
-                        className={`px-4 sm:px-6 py-5 sm:py-6 transition-colors ${
-                          message.role === "user" 
-                            ? "bg-background" 
-                            : "bg-card/50 border-y border-border/30"
-                        }`}
-                      >
-                        <div className="max-w-4xl mx-auto">
-                          <ChatMessage
-                            role={message.role}
-                            content={message.content}
-                          />
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  {/* Loader visuel pour la génération d'image */}
-                  <AnimatePresence>
-                    {imageGenState?.isGenerating && (
-                      <motion.div
-                        className="px-4 sm:px-6 py-6"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <ImageGenerationLoader
-                          progress={imageGenState.progress}
-                          timeRemaining={imageGenState.timeRemaining}
-                          status={imageGenState.status}
-                          queuePosition={imageGenState.queuePosition}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <AnimatePresence>
-                    {isLoading && !imageGenState?.isGenerating && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
-                      <motion.div
-                        className="message-assistant"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <div className="max-w-4xl mx-auto">
-                          <TypingIndicator />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  ))}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+              </motion.div>
+            )}
 
-        {/* Input Area */}
-        <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
-          <div className="px-3 sm:px-4 py-4 sm:py-5 max-w-4xl mx-auto">
-            <ChatInput 
-              onSend={handleSendMessage} 
-              onStop={handleStopGeneration} 
-              isLoading={isLoading}
-              imageDisabled={!modelSupportsImages(selectedModel)}
-              isAuthenticated={!!user && !isGuest}
-            />
+            {/* Empty state */}
+            {generatedImages.length === 0 && !imageGenState?.isGenerating && (
+              <motion.div
+                className="text-center py-16"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                  <span className="text-4xl">🎨</span>
+                </div>
+                <h3 className="text-lg font-medium text-foreground mb-2">Aucune image générée</h3>
+                <p className="text-muted-foreground text-sm">Décrivez votre première image ci-dessus pour commencer</p>
+              </motion.div>
+            )}
           </div>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );

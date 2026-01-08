@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Sparkles, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -65,13 +65,6 @@ const Auth = () => {
     }
   };
 
-  const handleGuestAccess = () => {
-    // Stocker le mode invité dans localStorage
-    localStorage.setItem("juxGuestMode", "true");
-    localStorage.setItem("juxSelectedModel", "liquid/lfm2-1.2b");
-    navigate("/");
-  };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background decoration */}
@@ -108,6 +101,16 @@ const Auth = () => {
               Jux-AI
             </h1>
           </motion.div>
+
+          {/* Subtitle */}
+          <motion.p
+            className="text-center text-muted-foreground mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+          >
+            Créez des images uniques avec l'IA
+          </motion.p>
 
           {/* Title */}
           <motion.h2 
@@ -192,30 +195,8 @@ const Auth = () => {
             </button>
           </p>
 
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border/50"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card/80 backdrop-blur px-4 text-muted-foreground font-medium">ou</span>
-            </div>
-          </div>
-
-          {/* Guest Access */}
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 rounded-xl border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-all duration-200"
-            onClick={handleGuestAccess}
-          >
-            <User className="h-4 w-4 mr-2" />
-            Continuer en tant qu'invité
-            <ArrowRight className="h-4 w-4 ml-2 opacity-50" />
-          </Button>
-
-          <p className="text-xs text-center text-muted-foreground/70 mt-5">
-            En mode invité, seul le modèle basique est disponible.
+          <p className="text-xs text-center text-muted-foreground/70 mt-8">
+            Un compte est requis pour utiliser Jux-AI.
           </p>
         </div>
       </motion.div>
