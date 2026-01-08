@@ -10,6 +10,7 @@ import { Updates } from "@/components/Updates";
 import { ModelSelector, modelSupportsImages } from "@/components/ModelSelector";
 import { PromptSuggestions } from "@/components/PromptSuggestions";
 import { TypingIndicator } from "@/components/TypingIndicator";
+import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -70,6 +71,15 @@ const Index = () => {
   const [titleAnimationState, setTitleAnimationState] = useState<'idle' | 'removing' | 'waiting' | 'completing' | 'arriving'>('idle');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // État pour la génération d'image avec loader visuel
+  const [imageGenState, setImageGenState] = useState<{
+    isGenerating: boolean;
+    progress: number;
+    timeRemaining: number;
+    status: "pending" | "generating";
+    queuePosition: number;
+  } | null>(null);
 
   // Auth effect
   useEffect(() => {
@@ -341,6 +351,7 @@ const Index = () => {
             // Vérifier le timeout
             if (remaining <= 0) {
               console.log("Timeout atteint - annulation et suppression");
+              setImageGenState(null);
               // Supprimer la requête de Supabase
               await supabase
                 .from("image_requests")
@@ -365,6 +376,7 @@ const Index = () => {
             }
 
             if (shouldStopRef.current) {
+              setImageGenState(null);
               // Annuler et supprimer la génération
               await supabase
                 .from("image_requests")
@@ -398,8 +410,7 @@ const Index = () => {
 
             // Mettre à jour le message de progression selon le statut
             const progress = pollData.progress || 0;
-            let statusMessage = "";
-            const timeRemaining = formatTime(remaining);
+            let queuePosition = 1;
             
             if (pollData.status === "pending") {
               const { count } = await supabase
@@ -408,25 +419,32 @@ const Index = () => {
                 .in("status", ["pending", "generating"])
                 .lt("created_at", new Date().toISOString());
               
-              statusMessage = `🎨 En attente...\n📊 Position dans la file : ${(count || 0) + 1}\n⏱️ Temps restant : ${timeRemaining}`;
-            } else if (pollData.status === "generating") {
-              const progressBar = "█".repeat(Math.floor(progress / 10)) + "░".repeat(10 - Math.floor(progress / 10));
-              statusMessage = `🔄 Génération en cours...\n\n[${progressBar}] ${progress}%\n⏱️ Temps restant : ${timeRemaining}`;
+              queuePosition = (count || 0) + 1;
             }
 
-            if (statusMessage) {
-              const updatedProgress: Message = {
-                id: progressMessageId,
-                role: "assistant",
-                content: statusMessage,
-                timestamp: Date.now(),
-              };
-              currentMessages[currentMessages.length - 1] = updatedProgress;
-              updateConversation(currentConversationId, { messages: [...currentMessages] });
-            }
+            // Mettre à jour l'état du loader visuel
+            setImageGenState({
+              isGenerating: true,
+              progress,
+              timeRemaining: Math.max(0, remaining / 1000),
+              status: pollData.status === "generating" ? "generating" : "pending",
+              queuePosition,
+            });
+
+            // Message simple pour le chat (le loader visuel affiche les détails)
+            const statusMessage = "⏳ Génération d'image en cours...";
+            const updatedProgress: Message = {
+              id: progressMessageId,
+              role: "assistant",
+              content: statusMessage,
+              timestamp: Date.now(),
+            };
+            currentMessages[currentMessages.length - 1] = updatedProgress;
+            updateConversation(currentConversationId, { messages: [...currentMessages] });
 
             if (pollData.status === "done" && pollData.image_base64) {
               console.log("Image générée avec succès");
+              setImageGenState(null);
               toast({
                 title: "Image générée",
                 description: "Votre image a été créée avec succès",
@@ -447,8 +465,10 @@ const Index = () => {
               updateConversation(currentConversationId, { messages: [...currentMessages] });
               break;
             } else if (pollData.status === "error") {
+              setImageGenState(null);
               throw new Error(pollData.image_base64 || "Erreur lors de la génération");
             } else if (pollData.status === "cancelled") {
+              setImageGenState(null);
               // Supprimer la requête annulée
               await supabase
                 .from("image_requests")
@@ -459,6 +479,7 @@ const Index = () => {
           }
         } catch (genError: any) {
           console.error("Erreur génération image:", genError);
+          setImageGenState(null);
           
           const errorMessage: Message = {
             id: progressMessageId,
@@ -1040,8 +1061,27 @@ const Index = () => {
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                  {/* Loader visuel pour la génération d'image */}
                   <AnimatePresence>
-                    {isLoading && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
+                    {imageGenState?.isGenerating && (
+                      <motion.div
+                        className="px-4 sm:px-6 py-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ImageGenerationLoader
+                          progress={imageGenState.progress}
+                          timeRemaining={imageGenState.timeRemaining}
+                          status={imageGenState.status}
+                          queuePosition={imageGenState.queuePosition}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <AnimatePresence>
+                    {isLoading && !imageGenState?.isGenerating && !currentMessages.some(m => m.role === 'assistant' && currentMessages.indexOf(m) === currentMessages.length - 1) && (
                       <motion.div
                         className="message-assistant"
                         initial={{ opacity: 0, y: 20 }}
