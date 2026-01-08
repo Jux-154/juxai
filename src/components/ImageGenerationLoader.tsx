@@ -1,9 +1,8 @@
 import { motion } from "framer-motion";
-import "./LoaderAnimation.css";
 
 interface ImageGenerationLoaderProps {
   progress: number;
-  timeRemaining: number; // en secondes
+  timeRemaining: number;
   status: "pending" | "generating";
   queuePosition?: number;
 }
@@ -25,13 +24,13 @@ export const ImageGenerationLoader = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center p-6 rounded-2xl glass-card w-full max-w-md mx-auto"
+      className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl glass-card w-full max-w-xs sm:max-w-sm mx-auto"
     >
-      {/* Compte à rebours en grand */}
+      {/* Countdown */}
       <motion.div
-        className={`text-6xl font-bold mb-4 tabular-nums ${
+        className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-2 tabular-nums ${
           isLowTime ? "text-red-400" : "text-primary"
         }`}
         animate={isLowTime ? { scale: [1, 1.05, 1] } : {}}
@@ -40,68 +39,65 @@ export const ImageGenerationLoader = ({
         {formatTime(timeRemaining)}
       </motion.div>
 
-      <p className="text-muted-foreground text-sm mb-6">
+      <p className="text-muted-foreground text-xs sm:text-sm mb-4">
         {isLowTime ? "⚠️ Temps presque écoulé" : "⏱️ Temps restant"}
       </p>
 
-      {/* Animation de chargement dots */}
-      <div className="dots-container mb-6">
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
+      {/* Dots animation */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.div
+            key={i}
+            className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-primary"
+            animate={{
+              scale: [0.8, 1.2, 0.8],
+              opacity: [0.5, 1, 0.5],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              delay: i * 0.15,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
       </div>
 
-      {/* Barre de progression */}
-      <div className="w-full mb-4">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+      {/* Progress bar */}
+      <div className="w-full mb-3">
+        <div className="flex justify-between text-xs sm:text-sm text-muted-foreground mb-1">
           <span>
-            {status === "pending" ? "🎨 En attente..." : "🔄 Génération en cours..."}
+            {status === "pending" ? "🎨 En attente..." : "🔄 Génération..."}
           </span>
           <span className="font-mono font-bold text-primary">{progressPercent}%</span>
         </div>
-        <div className="progress-loader">
+        <div className="w-full h-2 sm:h-3 bg-muted/30 rounded-full overflow-hidden">
           <motion.div
-            className="progress"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            style={{ 
-              animation: "none",
-              width: `${progressPercent}%`,
-              background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))"
-            }}
           />
         </div>
       </div>
 
-      {/* Position dans la file */}
+      {/* Queue position */}
       {status === "pending" && queuePosition !== undefined && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center gap-2 text-muted-foreground"
-        >
-          <span className="text-lg">📊</span>
-          <span>Position dans la file : <span className="font-bold text-foreground">{queuePosition}</span></span>
-        </motion.div>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          📊 Position : <span className="font-bold text-foreground">{queuePosition}</span>
+        </p>
       )}
 
-      {/* Indication du statut */}
+      {/* Generating indicator */}
       {status === "generating" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center gap-2"
-        >
+        <div className="flex items-center gap-2">
           <motion.div
             className="w-2 h-2 rounded-full bg-green-400"
-            animate={{ opacity: [1, 0.5, 1] }}
+            animate={{ opacity: [1, 0.4, 1] }}
             transition={{ duration: 1, repeat: Infinity }}
           />
-          <span className="text-sm text-muted-foreground">Création de votre image...</span>
-        </motion.div>
+          <span className="text-xs sm:text-sm text-muted-foreground">Création en cours...</span>
+        </div>
       )}
     </motion.div>
   );
