@@ -175,11 +175,14 @@ const Index = () => {
     const startTime = Date.now();
 
     try {
+      // En mode édition, on envoie l'image - en mode génération, jamais d'image
+      const imageToSend = activeTab === "edit" ? uploadedImage : null;
+      
       const { data, error } = await supabase.functions.invoke('generate-image', {
         body: { 
           prompt: prompt.trim(), 
           negativePrompt: "",
-          inputImage: uploadedImage || null
+          inputImage: imageToSend
         }
       });
 
