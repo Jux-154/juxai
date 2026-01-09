@@ -11,16 +11,15 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 interface GenerateImageRequest {
   prompt: string;
   negativePrompt?: string;
+  inputImage?: string | null;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Vérifier l'authentification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -29,7 +28,7 @@ serve(async (req) => {
       );
     }
 
-    const { prompt, negativePrompt = "" } = await req.json() as GenerateImageRequest;
+    const { prompt, negativePrompt = "", inputImage = null } = await req.json() as GenerateImageRequest;
     
     if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
       return new Response(
@@ -38,9 +37,9 @@ serve(async (req) => {
       );
     }
 
-    console.log(`🎨 Nouvelle requête d'image: ${prompt.substring(0, 50)}...`);
+    const isEditMode = !!inputImage;
+    console.log(`🎨 Nouvelle requête ${isEditMode ? 'ÉDITION' : 'GÉNÉRATION'}: ${prompt.substring(0, 50)}...`);
 
-    // Insérer la requête dans la table image_requests via l'API REST Supabase
     const insertResponse = await fetch(`${SUPABASE_URL}/rest/v1/image_requests`, {
       method: 'POST',
       headers: {
@@ -52,6 +51,7 @@ serve(async (req) => {
       body: JSON.stringify({
         prompt: prompt.trim(),
         negative: negativePrompt.trim() || null,
+        input_image: inputImage || null,
         status: 'pending'
       })
     });
@@ -68,9 +68,8 @@ serve(async (req) => {
     const insertedData = await insertResponse.json();
     const data = Array.isArray(insertedData) ? insertedData[0] : insertedData;
 
-    console.log(`✓ Requête créée avec l'ID: ${data.id}`);
+    console.log(`✓ Requête créée avec l'ID: ${data.id} (mode: ${isEditMode ? 'edit' : 'generate'})`);
 
-    // Compter la position dans la file d'attente
     const countResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/image_requests?select=id&status=in.(pending,generating)&created_at=lt.${data.created_at}`,
       {
@@ -91,6 +90,7 @@ serve(async (req) => {
         requestId: data.id,
         status: 'pending',
         queuePosition: queuePosition,
+        mode: isEditMode ? 'edit' : 'generate',
         message: `Requête ajoutée à la file d'attente (position ${queuePosition})`
       }), 
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
