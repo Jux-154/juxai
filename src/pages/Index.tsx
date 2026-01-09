@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, X, Send, Mic, MicOff, ChevronLeft, ChevronRight, Download, Trash2 } from "lucide-react";
+import { LogOut, X, Send, Mic, MicOff, Download, Trash2, ImagePlus, Sparkles, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface GeneratedImage {
@@ -20,16 +20,24 @@ interface GeneratedImage {
   createdAt: number;
 }
 
-// Style presets for quick access
-const STYLE_PRESETS = [
-  { id: "croquis", name: "Croquis", prompt: "pencil sketch style, hand-drawn, artistic" },
-  { id: "dramatique", name: "Dramatique", prompt: "dramatic lighting, cinematic, high contrast" },
-  { id: "plushie", name: "Plushie", prompt: "cute plush toy style, soft, adorable, 3D render" },
-  { id: "retro", name: "Rétro", prompt: "retro anime style, 80s, vintage colors" },
-  { id: "figurine", name: "Figurine", prompt: "3D figurine, toy style, detailed miniature" },
-  { id: "doodle", name: "Doodle", prompt: "doodle art style, hand-drawn, sketchy" },
-  { id: "photoreal", name: "Photoréaliste", prompt: "photorealistic, highly detailed, 8k" },
-  { id: "watercolor", name: "Aquarelle", prompt: "watercolor painting style, soft colors, artistic" },
+// Presets pour génération (texte seul)
+const GENERATION_PRESETS = [
+  { id: "croquis", name: "Croquis", prompt: "pencil sketch style, hand-drawn, artistic", emoji: "✏️" },
+  { id: "dramatique", name: "Dramatique", prompt: "dramatic lighting, cinematic, high contrast", emoji: "🎭" },
+  { id: "plushie", name: "Plushie", prompt: "cute plush toy style, soft, adorable, 3D render", emoji: "🧸" },
+  { id: "photoreal", name: "Photoréaliste", prompt: "photorealistic, highly detailed, 8k", emoji: "📷" },
+  { id: "watercolor", name: "Aquarelle", prompt: "watercolor painting style, soft colors, artistic", emoji: "🎨" },
+  { id: "anime", name: "Anime", prompt: "anime style, vibrant colors, detailed", emoji: "🌸" },
+];
+
+// Presets pour édition (texte + image)
+const EDIT_PRESETS = [
+  { id: "background", name: "Changer fond", prompt: "change the background to", emoji: "🖼️" },
+  { id: "enhance", name: "Améliorer", prompt: "enhance and improve the quality of this image", emoji: "✨" },
+  { id: "style-transfer", name: "Style artistique", prompt: "transform this image into an artistic painting style", emoji: "🎨" },
+  { id: "remove-bg", name: "Retirer objets", prompt: "remove unwanted objects and clean up the image", emoji: "🧹" },
+  { id: "colorize", name: "Coloriser", prompt: "add vibrant colors and enhance saturation", emoji: "🌈" },
+  { id: "vintage", name: "Vintage", prompt: "apply a vintage retro film effect to this image", emoji: "📼" },
 ];
 
 const Index = () => {
@@ -40,14 +48,15 @@ const Index = () => {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [styleScrollIndex, setStyleScrollIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"generate" | "edit">("generate");
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const shouldStopRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // État pour la génération d'image avec loader visuel
   const [imageGenState, setImageGenState] = useState<{
     isGenerating: boolean;
     progress: number;
@@ -56,40 +65,29 @@ const Index = () => {
     queuePosition: number;
   } | null>(null);
 
-  // Auth effect - compte obligatoire
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        if (!session?.user) {
-          navigate("/auth");
-        }
+        if (!session?.user) navigate("/auth");
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (!session) {
-        navigate("/auth");
-      }
+      if (!session) navigate("/auth");
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Charger les images générées depuis localStorage
   useEffect(() => {
     const stored = localStorage.getItem("jux-generated-images");
-    if (stored) {
-      setGeneratedImages(JSON.parse(stored));
-    }
+    if (stored) setGeneratedImages(JSON.parse(stored));
   }, []);
 
-  // Sauvegarder les images générées
   const saveImages = (images: GeneratedImage[]) => {
     localStorage.setItem("jux-generated-images", JSON.stringify(images));
     setGeneratedImages(images);
@@ -103,22 +101,34 @@ const Index = () => {
     navigate("/auth");
   };
 
-  const handleStyleClick = (style: typeof STYLE_PRESETS[0]) => {
-    setPrompt(prev => {
-      if (prev.trim()) {
-        return `${prev.trim()}, ${style.prompt}`;
-      }
-      return style.prompt;
-    });
+  const handleStyleClick = (preset: { prompt: string }) => {
+    setPrompt(prev => prev.trim() ? `${prev.trim()}, ${preset.prompt}` : preset.prompt);
   };
 
-  const scrollStyles = (direction: "left" | "right") => {
-    const maxIndex = Math.max(0, STYLE_PRESETS.length - 4);
-    if (direction === "left") {
-      setStyleScrollIndex(Math.max(0, styleScrollIndex - 1));
-    } else {
-      setStyleScrollIndex(Math.min(maxIndex, styleScrollIndex + 1));
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner une image", variant: "destructive" });
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = (event.target?.result as string)?.split(",")[1];
+      if (base64) {
+        setUploadedImage(base64);
+        setActiveTab("edit");
+        toast({ title: "Image ajoutée", description: "Mode édition activé" });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeUploadedImage = () => {
+    setUploadedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const startVoiceRecording = () => {
@@ -146,13 +156,17 @@ const Index = () => {
   };
 
   const stopVoiceRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    if (recognitionRef.current) recognitionRef.current.stop();
   };
 
   const handleGenerateImage = async () => {
     if (!prompt.trim() || isLoading) return;
+
+    // Mode édition requiert une image
+    if (activeTab === "edit" && !uploadedImage) {
+      toast({ title: "Image requise", description: "Ajoutez une image pour le mode édition", variant: "destructive" });
+      return;
+    }
 
     setIsLoading(true);
     shouldStopRef.current = false;
@@ -162,7 +176,11 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: prompt.trim(), negativePrompt: "" }
+        body: { 
+          prompt: prompt.trim(), 
+          negativePrompt: "",
+          inputImage: uploadedImage || null
+        }
       });
 
       if (error) throw error;
@@ -170,7 +188,6 @@ const Index = () => {
       const imageRequestId = data?.requestId;
       if (!imageRequestId) throw new Error("Pas d'ID de requête reçu");
 
-      // Polling pour suivre la progression
       while (true) {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT_MS - elapsed;
@@ -232,6 +249,7 @@ const Index = () => {
           
           saveImages([newImage, ...generatedImages]);
           setPrompt("");
+          removeUploadedImage();
           toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
           break;
         } else if (pollData.status === "error") {
@@ -268,7 +286,6 @@ const Index = () => {
     link.click();
   };
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -276,11 +293,12 @@ const Index = () => {
     }
   }, [prompt]);
 
+  const currentPresets = activeTab === "generate" ? GENERATION_PRESETS : EDIT_PRESETS;
+
   return (
     <div className="flex h-screen bg-background relative overflow-hidden">
       <SidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
-      {/* Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
@@ -293,7 +311,6 @@ const Index = () => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar simplifié */}
       <motion.div 
         className={`w-72 border-r border-sidebar-border/30 glass-sidebar flex flex-col fixed top-0 left-0 h-screen z-[1000] ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -320,7 +337,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Infos utilisateur */}
         <div className="flex-1 p-4">
           <div className="glass-card rounded-xl p-4 mb-4">
             <p className="text-sm text-muted-foreground mb-1">Connecté en tant que</p>
@@ -333,7 +349,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Footer Sidebar */}
         <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
           <div className="flex items-center gap-2">
             <Settings />
@@ -352,37 +367,103 @@ const Index = () => {
         </div>
       </motion.div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1">
-          <div className="max-w-4xl mx-auto px-4 py-8">
-            {/* Header */}
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
             <motion.div 
-              className="text-center mb-8"
+              className="text-center mb-6 sm:mb-8"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Images
               </h1>
-              <p className="text-muted-foreground">Décrivez l'image que vous souhaitez créer</p>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {activeTab === "generate" ? "Décrivez l'image que vous souhaitez créer" : "Modifiez une image avec votre description"}
+              </p>
+            </motion.div>
+
+            {/* Tabs Génération / Édition */}
+            <motion.div 
+              className="flex gap-2 mb-4 sm:mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <Button
+                variant={activeTab === "generate" ? "default" : "outline"}
+                onClick={() => { setActiveTab("generate"); removeUploadedImage(); }}
+                className="flex-1 gap-2"
+                size="sm"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Générer</span>
+              </Button>
+              <Button
+                variant={activeTab === "edit" ? "default" : "outline"}
+                onClick={() => setActiveTab("edit")}
+                className="flex-1 gap-2"
+                size="sm"
+              >
+                <Wand2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Éditer</span>
+              </Button>
             </motion.div>
 
             {/* Input Zone */}
             <motion.div 
-              className="mb-8"
+              className="mb-4 sm:mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <div className="glass-card rounded-2xl p-4">
-                <div className="flex items-end gap-3">
+              <div className="glass-card rounded-2xl p-3 sm:p-4">
+                {/* Image preview pour mode édition */}
+                {activeTab === "edit" && (
+                  <div className="mb-3">
+                    {uploadedImage ? (
+                      <div className="relative inline-block">
+                        <img 
+                          src={`data:image/png;base64,${uploadedImage}`} 
+                          alt="Image à éditer" 
+                          className="h-20 sm:h-24 rounded-lg border border-border/50"
+                        />
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          onClick={removeUploadedImage}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full h-20 sm:h-24 border-dashed gap-2"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <ImagePlus className="h-5 w-5" />
+                        <span className="text-sm">Ajouter une image</span>
+                      </Button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2 sm:gap-3">
                   <Textarea
                     ref={textareaRef}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Décrire une nouvelle image..."
-                    className="flex-1 min-h-[48px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 text-foreground placeholder:text-muted-foreground/50"
+                    placeholder={activeTab === "generate" ? "Décrire une nouvelle image..." : "Décrivez les modifications..."}
+                    className="flex-1 min-h-[44px] sm:min-h-[48px] max-h-[100px] sm:max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 text-sm sm:text-base text-foreground placeholder:text-muted-foreground/50"
                     disabled={isLoading}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768) {
@@ -391,33 +472,45 @@ const Index = () => {
                       }
                     }}
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {activeTab === "edit" && !uploadedImage && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-muted-foreground hover:text-primary"
+                        disabled={isLoading}
+                      >
+                        <ImagePlus className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-                      className={`h-10 w-10 rounded-xl ${isRecording ? "bg-destructive/15 text-destructive" : "text-muted-foreground hover:text-primary"}`}
+                      className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl ${isRecording ? "bg-destructive/15 text-destructive" : "text-muted-foreground hover:text-primary"}`}
                       disabled={isLoading}
                     >
-                      {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      {isRecording ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </Button>
                     {isLoading ? (
                       <Button
                         onClick={handleStopGeneration}
                         size="icon"
-                        className="h-10 w-10 rounded-xl bg-destructive hover:bg-destructive/90"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-destructive hover:bg-destructive/90"
                       >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     ) : (
                       <Button
                         onClick={handleGenerateImage}
                         size="icon"
-                        disabled={!prompt.trim()}
-                        className="h-10 w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
+                        disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage)}
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
                       >
-                        <Send className="h-5 w-5" />
+                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     )}
                   </div>
@@ -429,7 +522,7 @@ const Index = () => {
             <AnimatePresence>
               {imageGenState?.isGenerating && (
                 <motion.div
-                  className="mb-8"
+                  className="mb-6 sm:mb-8"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
@@ -446,55 +539,29 @@ const Index = () => {
 
             {/* Style Presets */}
             <motion.div 
-              className="mb-10"
+              className="mb-8 sm:mb-10"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">Appliquez un style</h2>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => scrollStyles("left")}
-                    disabled={styleScrollIndex === 0}
+              <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
+                {activeTab === "generate" ? "Styles de génération" : "Styles d'édition"}
+              </h2>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
+                {currentPresets.map((preset) => (
+                  <motion.button
+                    key={preset.id}
+                    onClick={() => handleStyleClick(preset)}
+                    className="group text-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => scrollStyles("right")}
-                    disabled={styleScrollIndex >= STYLE_PRESETS.length - 4}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="overflow-hidden">
-                <motion.div 
-                  className="flex gap-4"
-                  animate={{ x: -styleScrollIndex * 140 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                >
-                  {STYLE_PRESETS.map((style) => (
-                    <motion.button
-                      key={style.id}
-                      onClick={() => handleStyleClick(style)}
-                      className="flex-shrink-0 w-28 sm:w-32 group"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <div className="aspect-square rounded-xl bg-gradient-to-br from-card to-muted border border-border/50 mb-2 flex items-center justify-center group-hover:border-primary/50 transition-colors overflow-hidden">
-                        <span className="text-3xl">🎨</span>
-                      </div>
-                      <p className="text-sm text-center text-foreground/80 group-hover:text-foreground">{style.name}</p>
-                    </motion.button>
-                  ))}
-                </motion.div>
+                    <div className="aspect-square rounded-xl bg-gradient-to-br from-card to-muted border border-border/50 mb-1 sm:mb-2 flex items-center justify-center group-hover:border-primary/50 transition-colors">
+                      <span className="text-xl sm:text-2xl">{preset.emoji}</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-foreground/80 group-hover:text-foreground truncate">{preset.name}</p>
+                  </motion.button>
+                ))}
               </div>
             </motion.div>
 
@@ -505,8 +572,8 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <h2 className="text-lg font-semibold text-foreground mb-4">Mes images</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Mes images</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
                   {generatedImages.map((image) => (
                     <motion.div
                       key={image.id}
@@ -522,22 +589,22 @@ const Index = () => {
                         <Button
                           size="icon"
                           variant="secondary"
-                          className="h-8 w-8 rounded-lg"
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg"
                           onClick={() => handleDownloadImage(image)}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="destructive"
-                          className="h-8 w-8 rounded-lg"
+                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg"
                           onClick={() => handleDeleteImage(image.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="text-xs text-white truncate">{image.prompt}</p>
+                      <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-[10px] sm:text-xs text-white truncate">{image.prompt}</p>
                       </div>
                     </motion.div>
                   ))}
@@ -548,16 +615,16 @@ const Index = () => {
             {/* Empty state */}
             {generatedImages.length === 0 && !imageGenState?.isGenerating && (
               <motion.div
-                className="text-center py-16"
+                className="text-center py-12 sm:py-16"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <div className="w-24 h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <span className="text-4xl">🎨</span>
+                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                  <span className="text-3xl sm:text-4xl">🎨</span>
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">Aucune image générée</h3>
-                <p className="text-muted-foreground text-sm">Décrivez votre première image ci-dessus pour commencer</p>
+                <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">Aucune image générée</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm">Décrivez votre première image ci-dessus</p>
               </motion.div>
             )}
           </div>

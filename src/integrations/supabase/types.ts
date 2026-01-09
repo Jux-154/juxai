@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           id: string
           image_base64: string | null
+          input_image: string | null
           negative: string | null
           progress: number | null
           prompt: string
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_base64?: string | null
+          input_image?: string | null
           negative?: string | null
           progress?: number | null
           prompt: string
@@ -37,6 +39,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           image_base64?: string | null
+          input_image?: string | null
           negative?: string | null
           progress?: number | null
           prompt?: string
@@ -68,47 +71,6 @@ export type Database = {
           position?: number
           room_id?: string
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_queue_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "multi_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      multi_rooms: {
-        Row: {
-          code: string
-          created_at: string
-          current_speaker_id: string | null
-          expires_at: string | null
-          host_id: string
-          id: string
-          is_active: boolean
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          current_speaker_id?: string | null
-          expires_at?: string | null
-          host_id: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          current_speaker_id?: string | null
-          expires_at?: string | null
-          host_id?: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
         }
         Relationships: []
       }
@@ -174,76 +136,6 @@ export type Database = {
           use_web_search?: boolean | null
         }
         Relationships: []
-      }
-      room_members: {
-        Row: {
-          id: string
-          joined_at: string
-          queue_position: number | null
-          role: string
-          room_id: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          joined_at?: string
-          queue_position?: number | null
-          role?: string
-          room_id: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          joined_at?: string
-          queue_position?: number | null
-          role?: string
-          room_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "room_members_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "multi_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      room_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          is_ai_response: boolean
-          room_id: string
-          user_id: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          is_ai_response?: boolean
-          room_id: string
-          user_id?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          is_ai_response?: boolean
-          room_id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "room_messages_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "multi_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
