@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      hashtags: {
+        Row: {
+          id: string
+          name: string
+          use_count: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          use_count?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          use_count?: number
+        }
+        Relationships: []
+      }
       image_requests: {
         Row: {
           created_at: string | null
@@ -46,6 +64,35 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          publication_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          publication_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          publication_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_queue: {
         Row: {
@@ -98,6 +145,74 @@ export type Database = {
         }
         Relationships: []
       }
+      publication_hashtags: {
+        Row: {
+          hashtag_id: string
+          id: string
+          publication_id: string
+        }
+        Insert: {
+          hashtag_id: string
+          id?: string
+          publication_id: string
+        }
+        Update: {
+          hashtag_id?: string
+          id?: string
+          publication_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_hashtags_hashtag_id_fkey"
+            columns: ["hashtag_id"]
+            isOneToOne: false
+            referencedRelation: "hashtags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publication_hashtags_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      publications: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_id: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_id: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_id?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publications_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: true
+            referencedRelation: "user_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requests: {
         Row: {
           created_at: string
@@ -136,6 +251,86 @@ export type Database = {
           use_web_search?: boolean | null
         }
         Relationships: []
+      }
+      user_images: {
+        Row: {
+          created_at: string
+          id: string
+          prompt: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prompt: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prompt?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          feed_mode: string
+          id: string
+          pseudo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feed_mode?: string
+          id?: string
+          pseudo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feed_mode?: string
+          id?: string
+          pseudo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      viewed_publications: {
+        Row: {
+          id: string
+          publication_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          publication_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          publication_id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "viewed_publications_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "publications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
