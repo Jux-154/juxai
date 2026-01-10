@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "@/components/ui/sonner";
 import { PublishModal } from "./PublishModal";
 
 export interface LightboxImage {
@@ -50,7 +51,7 @@ export const ImageLightbox = ({ image, onClose, onPublish }: ImageLightboxProps)
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(image.url);
-      toast({ title: "Lien copié", description: "Le lien de l'image a été copié" });
+      sonnerToast("Le lien de l'image a été copié");
     } catch {
       toast({ title: "Erreur", description: "Impossible de copier le lien", variant: "destructive" });
     }
@@ -119,7 +120,7 @@ export const ImageLightbox = ({ image, onClose, onPublish }: ImageLightboxProps)
                     Options
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-48">
+                <DropdownMenuContent align="center" className="w-48 z-[3000]">
                   <DropdownMenuItem onClick={handleDownload}>
                     <Download className="h-4 w-4 mr-2" />
                     Télécharger
