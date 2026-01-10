@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ConfirmMail from "./pages/ConfirmMail";
+import Creations from "./pages/Creations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,11 +17,9 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading time for components
     const timer = setTimeout(() => {
       setIsLoading(false);
 
-      // Check for automatic fullscreen after loading completes
       const autoFullscreenEnabled = localStorage.getItem("autoFullscreenEnabled");
       if (autoFullscreenEnabled && JSON.parse(autoFullscreenEnabled)) {
         const requestFullscreen = async () => {
@@ -40,7 +39,7 @@ const App = () => {
         };
         requestFullscreen();
       }
-    }, 3500); // 5 seconds loading
+    }, 3500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -155,7 +154,7 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/confirm-mail" element={<ConfirmMail />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="/creations" element={<Creations />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </HashRouter>

@@ -4,21 +4,16 @@ import { SidebarToggle } from "@/components/SidebarToggle";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
+import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
+import { useUserImages } from "@/hooks/useUserImages";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, X, Send, Mic, MicOff, Download, Trash2, ImagePlus, Sparkles, Wand2 } from "lucide-react";
+import { LogOut, X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface GeneratedImage {
-  id: string;
-  prompt: string;
-  imageBase64: string;
-  createdAt: number;
-}
 
 // Presets pour génération (texte seul)
 const GENERATION_PRESETS = [
@@ -47,15 +42,16 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"generate" | "edit">("generate");
+  const [lightboxImage, setLightboxImage] = useState<LightboxImage | null>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const shouldStopRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { images, saveImage, deleteImage, publishImage } = useUserImages(user?.id);
 
   const [imageGenState, setImageGenState] = useState<{
     isGenerating: boolean;
@@ -82,16 +78,6 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("jux-generated-images");
-    if (stored) setGeneratedImages(JSON.parse(stored));
-  }, []);
-
-  const saveImages = (images: GeneratedImage[]) => {
-    localStorage.setItem("jux-generated-images", JSON.stringify(images));
-    setGeneratedImages(images);
-  };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -162,20 +148,17 @@ const Index = () => {
   const handleGenerateImage = async () => {
     if (!prompt.trim() || isLoading) return;
 
-    // Mode édition requiert une image
     if (activeTab === "edit" && !uploadedImage) {
       toast({ title: "Image requise", description: "Ajoutez une image pour le mode édition", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
-    shouldStopRef.current = false;
 
     const TIMEOUT_MS = 2 * 60 * 1000;
     const startTime = Date.now();
 
     try {
-      // En mode édition, on envoie l'image - en mode génération, jamais d'image
       const imageToSend = activeTab === "edit" ? uploadedImage : null;
       
       const { data, error } = await supabase.functions.invoke('generate-image', {
@@ -191,6 +174,8 @@ const Index = () => {
       const imageRequestId = data?.requestId;
       if (!imageRequestId) throw new Error("Pas d'ID de requête reçu");
 
+      const currentPrompt = prompt.trim();
+
       while (true) {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT_MS - elapsed;
@@ -199,13 +184,6 @@ const Index = () => {
           setImageGenState(null);
           await supabase.from("image_requests").delete().eq("id", imageRequestId);
           toast({ title: "Délai dépassé", description: "La génération a été annulée après 2 minutes", variant: "destructive" });
-          break;
-        }
-
-        if (shouldStopRef.current) {
-          setImageGenState(null);
-          await supabase.from("image_requests").delete().eq("id", imageRequestId);
-          toast({ title: "Annulé", description: "Génération annulée" });
           break;
         }
 
@@ -243,14 +221,9 @@ const Index = () => {
         if (pollData.status === "done" && pollData.image_base64) {
           setImageGenState(null);
           
-          const newImage: GeneratedImage = {
-            id: Date.now().toString(),
-            prompt: prompt.trim(),
-            imageBase64: pollData.image_base64,
-            createdAt: Date.now(),
-          };
+          // Sauvegarder dans Supabase Storage
+          await saveImage(pollData.image_base64, currentPrompt);
           
-          saveImages([newImage, ...generatedImages]);
           setPrompt("");
           removeUploadedImage();
           toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
@@ -272,21 +245,22 @@ const Index = () => {
     }
   };
 
-  const handleStopGeneration = () => {
-    shouldStopRef.current = true;
+  const handleDeleteImage = async (id: string) => {
+    await deleteImage(id);
   };
 
-  const handleDeleteImage = (id: string) => {
-    const updated = generatedImages.filter(img => img.id !== id);
-    saveImages(updated);
-    toast({ title: "Image supprimée" });
+  const handleImageClick = (image: typeof images[0]) => {
+    setLightboxImage({
+      id: image.id,
+      url: image.url,
+      prompt: image.prompt,
+      isPublished: image.isPublished,
+    });
   };
 
-  const handleDownloadImage = (image: GeneratedImage) => {
-    const link = document.createElement('a');
-    link.href = `data:image/png;base64,${image.imageBase64}`;
-    link.download = `jux-image-${image.id}.png`;
-    link.click();
+  const handlePublish = async (imageId: string, title: string, description: string) => {
+    await publishImage(imageId, title, description);
+    setLightboxImage(null);
   };
 
   useEffect(() => {
@@ -340,16 +314,26 @@ const Index = () => {
           </div>
         </div>
         
-        <div className="flex-1 p-4">
-          <div className="glass-card rounded-xl p-4 mb-4">
+        <div className="flex-1 p-4 space-y-3">
+          <div className="glass-card rounded-xl p-4">
             <p className="text-sm text-muted-foreground mb-1">Connecté en tant que</p>
             <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
           </div>
           
           <div className="glass-card rounded-xl p-4">
             <p className="text-sm text-muted-foreground mb-2">Images générées</p>
-            <p className="text-2xl font-bold text-primary">{generatedImages.length}</p>
+            <p className="text-2xl font-bold text-primary">{images.length}</p>
           </div>
+
+          {/* Lien vers Créations */}
+          <Button
+            variant="outline"
+            className="w-full gap-2 justify-start"
+            onClick={() => { closeSidebar(); navigate("/creations"); }}
+          >
+            <Images className="h-4 w-4" />
+            Créations
+          </Button>
         </div>
         
         <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
@@ -498,24 +482,14 @@ const Index = () => {
                     >
                       {isRecording ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </Button>
-                    {isLoading ? (
-                      <Button
-                        onClick={handleStopGeneration}
-                        size="icon"
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-destructive hover:bg-destructive/90"
-                      >
-                        <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleGenerateImage}
-                        size="icon"
-                        disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage)}
-                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
-                      >
-                        <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </Button>
-                    )}
+                    <Button
+                      onClick={handleGenerateImage}
+                      size="icon"
+                      disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage) || isLoading}
+                      className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
+                    >
+                      <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -569,7 +543,7 @@ const Index = () => {
             </motion.div>
 
             {/* Mes Images (Galerie) */}
-            {generatedImages.length > 0 && (
+            {images.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -577,35 +551,23 @@ const Index = () => {
               >
                 <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Mes images</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
-                  {generatedImages.map((image) => (
+                  {images.map((image) => (
                     <motion.div
                       key={image.id}
-                      className="group relative aspect-square rounded-xl overflow-hidden border border-border/50 hover:border-primary/50 transition-colors"
+                      className="group relative aspect-square rounded-xl overflow-hidden border border-border/50 hover:border-primary/50 transition-colors cursor-pointer"
                       whileHover={{ scale: 1.02 }}
+                      onClick={() => handleImageClick(image)}
                     >
                       <img
-                        src={`data:image/png;base64,${image.imageBase64}`}
+                        src={image.url}
                         alt={image.prompt}
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg"
-                          onClick={() => handleDownloadImage(image)}
-                        >
-                          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg"
-                          onClick={() => handleDeleteImage(image.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </div>
+                      {image.isPublished && (
+                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-primary/80 text-[10px] text-white font-medium">
+                          Publié
+                        </div>
+                      )}
                       <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <p className="text-[10px] sm:text-xs text-white truncate">{image.prompt}</p>
                       </div>
@@ -616,7 +578,7 @@ const Index = () => {
             )}
 
             {/* Empty state */}
-            {generatedImages.length === 0 && !imageGenState?.isGenerating && (
+            {images.length === 0 && !imageGenState?.isGenerating && (
               <motion.div
                 className="text-center py-12 sm:py-16"
                 initial={{ opacity: 0 }}
@@ -633,6 +595,17 @@ const Index = () => {
           </div>
         </ScrollArea>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <ImageLightbox
+            image={lightboxImage}
+            onClose={() => setLightboxImage(null)}
+            onPublish={handlePublish}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
