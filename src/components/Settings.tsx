@@ -9,41 +9,70 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-interface PersonalizationSettings {
-  userName: string;
-  userInfo: string;
-  responseStyle: string;
-  customInstruction: string;
+interface UserSettings {
+  pseudo: string;
+  feedMode: "tiktok" | "pinterest";
 }
 
 export const Settings = () => {
-  const [settings, setSettings] = useState<PersonalizationSettings>({
-    userName: "",
-    userInfo: "",
-    responseStyle: "default",
-    customInstruction: "",
+  const { toast } = useToast();
+  const [settings, setSettings] = useState<UserSettings>({
+    pseudo: "",
+    feedMode: "tiktok",
   });
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Load personalization settings from local storage
-    const saved = localStorage.getItem("juxPersonalization");
-    if (saved) {
-      try {
-        const parsedSettings = JSON.parse(saved);
-        setSettings(parsedSettings);
-      } catch (error) {
-        console.error("Error loading personalization settings:", error);
+    const loadSettings = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      setUserId(session.user.id);
+
+      const { data } = await supabase
+        .from("user_settings")
+        .select("pseudo, feed_mode")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (data) {
+        setSettings({
+          pseudo: data.pseudo || "",
+          feedMode: (data.feed_mode as "tiktok" | "pinterest") || "tiktok",
+        });
       }
-    }
+    };
+
+    loadSettings();
   }, []);
 
-  const updateSetting = (key: keyof PersonalizationSettings, value: string) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    localStorage.setItem("juxPersonalization", JSON.stringify(newSettings));
+  const saveSettings = async () => {
+    if (!userId) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("user_settings")
+        .upsert({
+          user_id: userId,
+          pseudo: settings.pseudo || null,
+          feed_mode: settings.feedMode,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      toast({ title: "Paramètres sauvegardés" });
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de sauvegarder", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -61,74 +90,65 @@ export const Settings = () => {
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Personnaliser Jux</DialogTitle>
+          <DialogTitle>Paramètres</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Pseudo */}
           <div className="space-y-2">
-            <Label htmlFor="userName" className="text-xs">
-              Comment souhaitez-vous que Jux vous appelle ?
+            <Label htmlFor="pseudo" className="text-sm">
+              Pseudo (pour le mode Créations)
             </Label>
             <Input
-              id="userName"
-              value={settings.userName}
-              onChange={(e) => updateSetting("userName", e.target.value)}
-              placeholder="Votre nom ou surnom"
-              maxLength={128}
-              className="text-xs"
+              id="pseudo"
+              value={settings.pseudo}
+              onChange={(e) => setSettings({ ...settings, pseudo: e.target.value })}
+              placeholder="Votre pseudo..."
+              maxLength={30}
             />
-            <div className="text-xs text-muted-foreground text-right">
-              {settings.userName.length}/128
+            <p className="text-xs text-muted-foreground">
+              Ce pseudo sera affiché sur vos publications
+            </p>
+          </div>
+
+          {/* Feed Mode */}
+          <div className="space-y-2">
+            <Label className="text-sm">Mode d'affichage du feed</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setSettings({ ...settings, feedMode: "tiktok" })}
+                className={`p-4 rounded-xl border-2 transition-all text-center ${
+                  settings.feedMode === "tiktok"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <div className="text-2xl mb-2">📱</div>
+                <p className="text-sm font-medium">TikTok</p>
+                <p className="text-xs text-muted-foreground">Scroll vertical plein écran</p>
+              </button>
+              <button
+                onClick={() => setSettings({ ...settings, feedMode: "pinterest" })}
+                className={`p-4 rounded-xl border-2 transition-all text-center ${
+                  settings.feedMode === "pinterest"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <div className="text-2xl mb-2">🎨</div>
+                <p className="text-sm font-medium">Pinterest</p>
+                <p className="text-xs text-muted-foreground">Grille masonry</p>
+              </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="userInfo" className="text-xs">
-              Que souhaitez-vous que Jux sache à votre sujet pour mieux adapter ses réponses à vos besoins ?
-            </Label>
-            <Textarea
-              id="userInfo"
-              value={settings.userInfo}
-              onChange={(e) => updateSetting("userInfo", e.target.value)}
-              placeholder="Par exemple : Je suis développeur, j'aime les technologies, etc."
-              maxLength={500}
-              rows={3}
-              className="text-xs resize-none"
-            />
-            <div className="text-xs text-muted-foreground text-right">
-              {settings.userInfo.length}/500
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="responseStyle" className="text-xs">
-              Comment souhaitez-vous que Jux réponde ?
-            </Label>
-            <select
-              id="responseStyle"
-              value={settings.responseStyle}
-              onChange={(e) => updateSetting("responseStyle", e.target.value)}
-              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="default">Par défaut - Équilibre pro et convivialité.</option>
-              <option value="concis">Concis - Court, direct, au but.</option>
-              <option value="socratique">Socratique - Guides avec des questions d'exploration.</option>
-              <option value="formel">Formel - Utilise un ton académique ou professionnel.</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="customInstruction" className="text-xs">
-              Instruction personnalisée : comment Jux devrait-il se comporter ?
-            </Label>
-            <Textarea
-              id="customInstruction"
-              value={settings.customInstruction}
-              onChange={(e) => updateSetting("customInstruction", e.target.value)}
-              placeholder="Instructions spécifiques pour Jux..."
-              rows={3}
-              className="text-xs resize-none"
-            />
-          </div>
+          {/* Save Button */}
+          <Button
+            onClick={saveSettings}
+            disabled={isSaving}
+            className="w-full"
+          >
+            {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
