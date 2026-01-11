@@ -16,7 +16,8 @@ interface Publication {
   created_at: string;
   user_id: string;
   image_url: string;
-  user_pseudo: string | null;
+  user_pseudo: string;
+  user_avatar: string | null;
   likes_count: number;
   is_liked: boolean;
 }
@@ -123,10 +124,10 @@ const Creations = () => {
             ? supabase.storage.from("images").getPublicUrl(imageData.storage_path).data.publicUrl
             : "";
 
-          // User pseudo
+          // User pseudo and avatar
           const { data: settings } = await supabase
             .from("user_settings")
-            .select("pseudo")
+            .select("pseudo, avatar_url")
             .eq("user_id", pub.user_id)
             .maybeSingle();
 
@@ -144,6 +145,7 @@ const Creations = () => {
             user_id: pub.user_id,
             image_url: imageUrl,
             user_pseudo: settings?.pseudo || "Anonyme",
+            user_avatar: settings?.avatar_url || null,
             likes_count: likesCount || 0,
             is_liked: likedIds.includes(pub.id),
           };
@@ -343,8 +345,12 @@ const Creations = () => {
               {/* Info (bottom) */}
               <div className="absolute bottom-8 left-4 right-20">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <UserIcon className="h-4 w-4 text-primary" />
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+                    {pub.user_avatar ? (
+                      <img src={pub.user_avatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <UserIcon className="h-4 w-4 text-primary" />
+                    )}
                   </div>
                   <span className="text-white font-medium text-sm">@{pub.user_pseudo}</span>
                 </div>
@@ -383,8 +389,12 @@ const Creations = () => {
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                            <UserIcon className="h-3 w-3 text-white" />
+                          <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                            {pub.user_avatar ? (
+                              <img src={pub.user_avatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <UserIcon className="h-3 w-3 text-white" />
+                            )}
                           </div>
                           <span className="text-white text-xs">@{pub.user_pseudo}</span>
                         </div>

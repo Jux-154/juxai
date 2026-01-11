@@ -305,26 +305,32 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          avatar_url: string | null
           created_at: string
           feed_mode: string
           id: string
           pseudo: string | null
+          pseudo_changed_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           feed_mode?: string
           id?: string
           pseudo?: string | null
+          pseudo_changed_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           feed_mode?: string
           id?: string
           pseudo?: string | null
+          pseudo_changed_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -364,6 +370,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_change_pseudo: { Args: { check_user_id: string }; Returns: boolean }
+      check_pseudo_available: {
+        Args: { check_pseudo: string; current_user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_rooms: { Args: never; Returns: undefined }
     }
     Enums: {

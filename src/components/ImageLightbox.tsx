@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, Eye, Share2, Upload, MoreVertical } from "lucide-react";
+import { X, Download, Eye, Share2, Upload, MoreVertical, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "@/components/ui/sonner";
 import { PublishModal } from "./PublishModal";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface LightboxImage {
   id: string;
@@ -23,12 +24,14 @@ interface ImageLightboxProps {
   image: LightboxImage | null;
   onClose: () => void;
   onPublish?: (imageId: string, title: string, description: string) => Promise<void>;
+  onSetAsAvatar?: (imageUrl: string) => Promise<void>;
 }
 
-export const ImageLightbox = ({ image, onClose, onPublish }: ImageLightboxProps) => {
+export const ImageLightbox = ({ image, onClose, onPublish, onSetAsAvatar }: ImageLightboxProps) => {
   const { toast } = useToast();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isSettingAvatar, setIsSettingAvatar] = useState(false);
 
   if (!image) return null;
 
@@ -61,6 +64,19 @@ export const ImageLightbox = ({ image, onClose, onPublish }: ImageLightboxProps)
     if (onPublish) {
       await onPublish(image.id, title, description);
       setShowPublishModal(false);
+    }
+  };
+
+  const handleSetAsAvatar = async () => {
+    if (!onSetAsAvatar) return;
+    setIsSettingAvatar(true);
+    try {
+      await onSetAsAvatar(image.url);
+      toast({ title: "Photo de profil mise à jour" });
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de définir la photo de profil", variant: "destructive" });
+    } finally {
+      setIsSettingAvatar(false);
     }
   };
 
@@ -137,6 +153,12 @@ export const ImageLightbox = ({ image, onClose, onPublish }: ImageLightboxProps)
                     <DropdownMenuItem onClick={() => setShowPublishModal(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Publier
+                    </DropdownMenuItem>
+                  )}
+                  {onSetAsAvatar && (
+                    <DropdownMenuItem onClick={handleSetAsAvatar} disabled={isSettingAvatar}>
+                      <User className="h-4 w-4 mr-2" />
+                      {isSettingAvatar ? "Chargement..." : "Photo de profil"}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

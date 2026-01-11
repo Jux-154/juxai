@@ -3,9 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { Heart, ImageIcon, Sparkles, LogOut } from "lucide-react";
+import { Heart, ImageIcon, Sparkles, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ProfileModalProps {
@@ -36,6 +37,7 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
   const [publishedImages, setPublishedImages] = useState<PublishedImage[]>([]);
   const [likedImages, setLikedImages] = useState<LikedImage[]>([]);
   const [pseudo, setPseudo] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -44,13 +46,14 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch pseudo
+        // Fetch pseudo and avatar
         const { data: settings } = await supabase
           .from("user_settings")
-          .select("pseudo")
+          .select("pseudo, avatar_url")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         setPseudo(settings?.pseudo || null);
+        setAvatarUrl(settings?.avatar_url || null);
 
         // Fetch published images
         const { data: pubs } = await supabase
@@ -154,19 +157,23 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
         <div className="space-y-4">
           {/* Info utilisateur */}
           <div className="glass-card rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Pseudo</p>
-                <p className="font-medium text-foreground">@{pseudo || "Non défini"}</p>
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16 border-2 border-primary/20">
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt="Avatar" />
+                ) : null}
+                <AvatarFallback className="bg-primary/10">
+                  <UserIcon className="h-8 w-8 text-primary" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-medium text-foreground text-lg">@{pseudo || "Anonyme"}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Crédits restants</p>
+                <p className="text-xs text-muted-foreground">Crédits</p>
                 <p className="text-2xl font-bold text-primary">{credits}/5</p>
               </div>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm text-foreground truncate">{user?.email}</p>
             </div>
           </div>
 
