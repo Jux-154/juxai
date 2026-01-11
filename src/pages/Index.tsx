@@ -5,14 +5,17 @@ import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
+import { ProfileModal } from "@/components/ProfileModal";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { useUserImages } from "@/hooks/useUserImages";
+import { useUserCredits } from "@/hooks/useUserCredits";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images, User as UserIcon, Coins } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Presets pour génération (texte seul)
@@ -25,7 +28,7 @@ const GENERATION_PRESETS = [
   { id: "anime", name: "Anime", prompt: "anime style, vibrant colors, detailed", emoji: "🌸" },
 ];
 
-// Presets pour édition (texte + image)
+// Presets pour édition (texte + image) - Désactivé pour l'instant
 const EDIT_PRESETS = [
   { id: "background", name: "Changer fond", prompt: "change the background to", emoji: "🖼️" },
   { id: "enhance", name: "Améliorer", prompt: "enhance and improve the quality of this image", emoji: "✨" },
@@ -46,12 +49,14 @@ const Index = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"generate" | "edit">("generate");
   const [lightboxImage, setLightboxImage] = useState<LightboxImage | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { images, saveImage, deleteImage, publishImage } = useUserImages(user?.id);
+  const { credits, useCredit, refreshCredits } = useUserCredits(user?.id);
 
   const [imageGenState, setImageGenState] = useState<{
     isGenerating: boolean;
@@ -150,6 +155,23 @@ const Index = () => {
 
     if (activeTab === "edit" && !uploadedImage) {
       toast({ title: "Image requise", description: "Ajoutez une image pour le mode édition", variant: "destructive" });
+      return;
+    }
+
+    // Vérifier les crédits
+    if (credits <= 0) {
+      toast({ 
+        title: "Plus de crédits", 
+        description: "Vos crédits seront réinitialisés à minuit (UTC-4)", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Utiliser un crédit
+    const success = await useCredit();
+    if (!success) {
+      toast({ title: "Erreur", description: "Impossible d'utiliser un crédit", variant: "destructive" });
       return;
     }
 
@@ -342,17 +364,30 @@ const Index = () => {
             <Updates />
             <div className="flex-1" />
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={handleLogout}
-              className="text-xs gap-1.5 text-muted-foreground hover:text-foreground hover:bg-destructive/10"
+              onClick={() => { closeSidebar(); setIsProfileOpen(true); }}
+              className="text-xs gap-1.5"
             >
-              <LogOut className="h-3.5 w-3.5" />
-              Déconnexion
+              <UserIcon className="h-3.5 w-3.5" />
+              Profil
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+                <Coins className="h-2.5 w-2.5 mr-0.5" />
+                {credits}
+              </Badge>
             </Button>
           </div>
         </div>
       </motion.div>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
+        credits={credits}
+        onLogout={handleLogout}
+      />
 
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1">
@@ -389,11 +424,15 @@ const Index = () => {
               <Button
                 variant={activeTab === "edit" ? "default" : "outline"}
                 onClick={() => setActiveTab("edit")}
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 relative"
                 size="sm"
+                disabled
               >
                 <Wand2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Éditer</span>
+                <Badge variant="secondary" className="absolute -top-2 -right-2 text-[9px] px-1.5">
+                  Bientôt
+                </Badge>
               </Button>
             </motion.div>
 

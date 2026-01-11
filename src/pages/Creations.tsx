@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, MessageCircle, Share2, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Heart, Share2, User as UserIcon, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { ViewedHistoryModal } from "@/components/ViewedHistoryModal";
 
 interface Publication {
   id: string;
@@ -28,6 +29,8 @@ const Creations = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [feedMode, setFeedMode] = useState<"tiktok" | "pinterest">("tiktok");
   const [isLoading, setIsLoading] = useState(true);
+  const [allViewed, setAllViewed] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ const Creations = () => {
         .from("user_settings")
         .select("feed_mode")
         .eq("user_id", session.user.id)
-        .single();
+        .maybeSingle();
 
       if (settings?.feed_mode) {
         setFeedMode(settings.feed_mode as "tiktok" | "pinterest");
@@ -75,7 +78,7 @@ const Creations = () => {
 
       const viewedIds = viewedPubs?.map(v => v.publication_id) || [];
 
-      // Récupérer les publications
+      // Récupérer les publications (exclure les siennes)
       let query = supabase
         .from("publications")
         .select(`
@@ -86,6 +89,7 @@ const Creations = () => {
           user_id,
           image_id
         `)
+        .neq("user_id", user.id) // Exclure ses propres publications
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -97,6 +101,13 @@ const Creations = () => {
       const { data: pubs, error } = await query;
 
       if (error) throw error;
+
+      // Vérifier si toutes les publications ont été vues
+      if ((!pubs || pubs.length === 0) && viewedIds.length > 0) {
+        setAllViewed(true);
+      } else {
+        setAllViewed(false);
+      }
 
       // Enrichir avec les données supplémentaires
       const enrichedPubs: Publication[] = await Promise.all(
@@ -117,7 +128,7 @@ const Creations = () => {
             .from("user_settings")
             .select("pseudo")
             .eq("user_id", pub.user_id)
-            .single();
+            .maybeSingle();
 
           // Likes count
           const { count: likesCount } = await supabase
@@ -250,15 +261,37 @@ const Creations = () => {
         </div>
       </div>
 
+      {/* Viewed History Modal */}
+      <ViewedHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        user={user}
+      />
+
       {publications.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center p-8 text-center">
           <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
             <Heart className="h-10 w-10 text-muted-foreground" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">Aucune création</h2>
-          <p className="text-muted-foreground text-sm max-w-xs">
-            Les créations publiées par la communauté apparaîtront ici
+          <h2 className="text-xl font-semibold mb-2">
+            {allViewed ? "Tout vu !" : "Aucune création"}
+          </h2>
+          <p className="text-muted-foreground text-sm max-w-xs mb-4">
+            {allViewed 
+              ? "Vous avez vu toutes les créations disponibles. Revenez plus tard pour découvrir de nouvelles publications !"
+              : "Les créations publiées par la communauté apparaîtront ici"
+            }
           </p>
+          {allViewed && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setIsHistoryOpen(true)}
+            >
+              <History className="h-4 w-4" />
+              Historique
+            </Button>
+          )}
         </div>
       ) : feedMode === "tiktok" ? (
         /* TikTok Mode - Full screen scroll */
