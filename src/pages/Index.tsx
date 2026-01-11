@@ -285,6 +285,20 @@ const Index = () => {
     setLightboxImage(null);
   };
 
+  const handleSetAsAvatar = async (imageUrl: string) => {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from("user_settings")
+      .upsert({
+        user_id: user.id,
+        avatar_url: imageUrl,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+
+    if (error) throw error;
+  };
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -642,6 +656,7 @@ const Index = () => {
             image={lightboxImage}
             onClose={() => setLightboxImage(null)}
             onPublish={handlePublish}
+            onSetAsAvatar={handleSetAsAvatar}
           />
         )}
       </AnimatePresence>
