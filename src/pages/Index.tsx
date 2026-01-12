@@ -6,10 +6,11 @@ import { Updates } from "@/components/Updates";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
 import { ProfileModal } from "@/components/ProfileModal";
+import { ImageNotification } from "@/components/ImageNotification";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-import { useUserImages } from "@/hooks/useUserImages";
+import { useUserImages, UserImage } from "@/hooks/useUserImages";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,13 @@ const Index = () => {
     queuePosition: number;
   } | null>(null);
 
+  // Notification state
+  const [notification, setNotification] = useState<{
+    isVisible: boolean;
+    imageUrl?: string;
+    imageId?: string;
+  }>({ isVisible: false });
+
   // Reprendre le polling d'une génération en cours après refresh/réveil
   useEffect(() => {
     const resumeGeneration = async () => {
@@ -90,8 +98,17 @@ const Index = () => {
         // Si déjà terminée, traiter le résultat
         if (pollData.status === "done" && pollData.image_base64) {
           localStorage.removeItem("pendingImageRequest");
-          await saveImage(pollData.image_base64, savedPrompt);
-          toast({ title: "Image générée", description: "Votre image a été récupérée avec succès" });
+          const savedImage = await saveImage(pollData.image_base64, savedPrompt);
+          // Show notification for background generation
+          if (savedImage) {
+            setNotification({
+              isVisible: true,
+              imageUrl: savedImage.url,
+              imageId: savedImage.id,
+            });
+            // Auto-hide after 8 seconds
+            setTimeout(() => setNotification({ isVisible: false }), 8000);
+          }
           return;
         }
 
@@ -164,8 +181,17 @@ const Index = () => {
         if (pollData.status === "done" && pollData.image_base64) {
           setImageGenState(null);
           localStorage.removeItem("pendingImageRequest");
-          await saveImage(pollData.image_base64, savedPrompt);
-          toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
+          const savedImage = await saveImage(pollData.image_base64, savedPrompt);
+          // Show notification
+          if (savedImage) {
+            setNotification({
+              isVisible: true,
+              imageUrl: savedImage.url,
+              imageId: savedImage.id,
+            });
+            // Auto-hide after 8 seconds
+            setTimeout(() => setNotification({ isVisible: false }), 8000);
+          }
           break;
         } else if (pollData.status === "error") {
           setImageGenState(null);
@@ -374,11 +400,21 @@ const Index = () => {
           localStorage.removeItem("pendingImageRequest");
           
           // Sauvegarder dans Supabase Storage
-          await saveImage(pollData.image_base64, currentPrompt);
+          const savedImage = await saveImage(pollData.image_base64, currentPrompt);
           
           setPrompt("");
           removeUploadedImage();
-          toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
+          
+          // Show notification
+          if (savedImage) {
+            setNotification({
+              isVisible: true,
+              imageUrl: savedImage.url,
+              imageId: savedImage.id,
+            });
+            // Auto-hide after 8 seconds
+            setTimeout(() => setNotification({ isVisible: false }), 8000);
+          }
           break;
         } else if (pollData.status === "error") {
           setImageGenState(null);
@@ -789,9 +825,24 @@ const Index = () => {
             onClose={() => setLightboxImage(null)}
             onPublish={handlePublish}
             onSetAsAvatar={handleSetAsAvatar}
+            onDelete={handleDeleteImage}
           />
         )}
       </AnimatePresence>
+
+      {/* Notification de génération */}
+      <ImageNotification
+        isVisible={notification.isVisible}
+        imageUrl={notification.imageUrl}
+        onClose={() => setNotification({ isVisible: false })}
+        onView={() => {
+          setNotification({ isVisible: false });
+          if (notification.imageId) {
+            const img = images.find(i => i.id === notification.imageId);
+            if (img) handleImageClick(img);
+          }
+        }}
+      />
     </div>
   );
 };
