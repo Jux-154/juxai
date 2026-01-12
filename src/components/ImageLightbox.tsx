@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, Eye, Share2, Upload, MoreVertical, User } from "lucide-react";
+import { X, Download, Eye, Share2, Upload, MoreVertical, User, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
@@ -25,15 +26,30 @@ interface ImageLightboxProps {
   onClose: () => void;
   onPublish?: (imageId: string, title: string, description: string) => Promise<void>;
   onSetAsAvatar?: (imageUrl: string) => Promise<void>;
+  onDelete?: (imageId: string) => Promise<void>;
 }
 
-export const ImageLightbox = ({ image, onClose, onPublish, onSetAsAvatar }: ImageLightboxProps) => {
+export const ImageLightbox = ({ image, onClose, onPublish, onSetAsAvatar, onDelete }: ImageLightboxProps) => {
   const { toast } = useToast();
   const [showPrompt, setShowPrompt] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isSettingAvatar, setIsSettingAvatar] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!image) return null;
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(image.id);
+      onClose();
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de supprimer l'image", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleDownload = async () => {
     try {
@@ -160,6 +176,19 @@ export const ImageLightbox = ({ image, onClose, onPublish, onSetAsAvatar }: Imag
                       <User className="h-4 w-4 mr-2" />
                       {isSettingAvatar ? "Chargement..." : "Photo de profil"}
                     </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={handleDelete} 
+                        disabled={isDeleting}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {isDeleting ? "Suppression..." : "Supprimer"}
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
