@@ -66,6 +66,127 @@ const Index = () => {
     queuePosition: number;
   } | null>(null);
 
+  // Reprendre le polling d'une génération en cours après refresh/réveil
+  useEffect(() => {
+    const resumeGeneration = async () => {
+      const savedRequest = localStorage.getItem("pendingImageRequest");
+      if (!savedRequest) return;
+
+      try {
+        const { requestId, prompt: savedPrompt, startTime } = JSON.parse(savedRequest);
+        
+        // Vérifier si la requête existe encore
+        const { data: pollData, error } = await supabase
+          .from("image_requests")
+          .select("status, image_base64, progress")
+          .eq("id", requestId)
+          .maybeSingle();
+
+        if (error || !pollData) {
+          localStorage.removeItem("pendingImageRequest");
+          return;
+        }
+
+        // Si déjà terminée, traiter le résultat
+        if (pollData.status === "done" && pollData.image_base64) {
+          localStorage.removeItem("pendingImageRequest");
+          await saveImage(pollData.image_base64, savedPrompt);
+          toast({ title: "Image générée", description: "Votre image a été récupérée avec succès" });
+          return;
+        }
+
+        if (pollData.status === "error" || pollData.status === "cancelled") {
+          localStorage.removeItem("pendingImageRequest");
+          return;
+        }
+
+        // Reprendre le polling
+        setIsLoading(true);
+        continuePolling(requestId, savedPrompt, startTime);
+      } catch (e) {
+        localStorage.removeItem("pendingImageRequest");
+      }
+    };
+
+    resumeGeneration();
+  }, []);
+
+  const continuePolling = async (requestId: string, savedPrompt: string, startTime: number) => {
+    const TIMEOUT_MS = 2 * 60 * 1000;
+
+    try {
+      while (true) {
+        const elapsed = Date.now() - startTime;
+        const remaining = TIMEOUT_MS - elapsed;
+
+        if (remaining <= 0) {
+          setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
+          await supabase.from("image_requests").delete().eq("id", requestId);
+          toast({ title: "Délai dépassé", description: "La génération a été annulée après 2 minutes", variant: "destructive" });
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const { data: pollData, error: pollError } = await supabase
+          .from("image_requests")
+          .select("status, image_base64, progress")
+          .eq("id", requestId)
+          .maybeSingle();
+
+        if (pollError) throw pollError;
+        if (!pollData) {
+          localStorage.removeItem("pendingImageRequest");
+          break;
+        }
+
+        const progress = pollData.progress || 0;
+        let queuePosition = 1;
+
+        if (pollData.status === "pending") {
+          const { count } = await supabase
+            .from("image_requests")
+            .select("*", { count: "exact", head: true })
+            .in("status", ["pending", "generating"])
+            .lt("created_at", new Date().toISOString());
+          queuePosition = (count || 0) + 1;
+        }
+
+        setImageGenState({
+          isGenerating: true,
+          progress,
+          timeRemaining: pollData.status === "generating" ? -1 : Math.max(0, remaining / 1000),
+          status: pollData.status === "generating" ? "generating" : "pending",
+          queuePosition,
+        });
+
+        if (pollData.status === "done" && pollData.image_base64) {
+          setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
+          await saveImage(pollData.image_base64, savedPrompt);
+          toast({ title: "Image générée", description: "Votre image a été créée avec succès" });
+          break;
+        } else if (pollData.status === "error") {
+          setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
+          throw new Error(pollData.image_base64 || "Erreur lors de la génération");
+        } else if (pollData.status === "cancelled") {
+          setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
+          await supabase.from("image_requests").delete().eq("id", requestId);
+          break;
+        }
+      }
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message || "Impossible de générer l'image", variant: "destructive" });
+      setImageGenState(null);
+      localStorage.removeItem("pendingImageRequest");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -198,12 +319,20 @@ const Index = () => {
 
       const currentPrompt = prompt.trim();
 
+      // Sauvegarder dans localStorage pour reprendre après refresh/réveil
+      localStorage.setItem("pendingImageRequest", JSON.stringify({
+        requestId: imageRequestId,
+        prompt: currentPrompt,
+        startTime
+      }));
+
       while (true) {
         const elapsed = Date.now() - startTime;
         const remaining = TIMEOUT_MS - elapsed;
 
         if (remaining <= 0) {
           setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
           await supabase.from("image_requests").delete().eq("id", imageRequestId);
           toast({ title: "Délai dépassé", description: "La génération a été annulée après 2 minutes", variant: "destructive" });
           break;
@@ -235,13 +364,14 @@ const Index = () => {
         setImageGenState({
           isGenerating: true,
           progress,
-          timeRemaining: Math.max(0, remaining / 1000),
+          timeRemaining: pollData.status === "generating" ? -1 : Math.max(0, remaining / 1000),
           status: pollData.status === "generating" ? "generating" : "pending",
           queuePosition,
         });
 
         if (pollData.status === "done" && pollData.image_base64) {
           setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
           
           // Sauvegarder dans Supabase Storage
           await saveImage(pollData.image_base64, currentPrompt);
@@ -252,9 +382,11 @@ const Index = () => {
           break;
         } else if (pollData.status === "error") {
           setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
           throw new Error(pollData.image_base64 || "Erreur lors de la génération");
         } else if (pollData.status === "cancelled") {
           setImageGenState(null);
+          localStorage.removeItem("pendingImageRequest");
           await supabase.from("image_requests").delete().eq("id", imageRequestId);
           break;
         }

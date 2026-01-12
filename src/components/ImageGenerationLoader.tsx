@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 interface ImageGenerationLoaderProps {
   progress: number;
-  timeRemaining: number;
+  timeRemaining: number; // -1 means no timer (generating mode)
   status: "pending" | "generating";
   queuePosition?: number;
 }
@@ -20,7 +20,8 @@ export const ImageGenerationLoader = ({
   queuePosition,
 }: ImageGenerationLoaderProps) => {
   const progressPercent = Math.min(100, Math.max(0, progress));
-  const isLowTime = timeRemaining <= 30;
+  const isLowTime = timeRemaining > 0 && timeRemaining <= 30;
+  const showTimer = status === "pending" && timeRemaining >= 0;
 
   return (
     <motion.div
@@ -28,20 +29,24 @@ export const ImageGenerationLoader = ({
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl glass-card w-full max-w-xs sm:max-w-sm mx-auto"
     >
-      {/* Countdown */}
-      <motion.div
-        className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-2 tabular-nums ${
-          isLowTime ? "text-red-400" : "text-primary"
-        }`}
-        animate={isLowTime ? { scale: [1, 1.05, 1] } : {}}
-        transition={{ duration: 0.5, repeat: isLowTime ? Infinity : 0 }}
-      >
-        {formatTime(timeRemaining)}
-      </motion.div>
+      {/* Countdown - Seulement en mode pending */}
+      {showTimer && (
+        <>
+          <motion.div
+            className={`text-4xl sm:text-5xl md:text-6xl font-bold mb-2 tabular-nums ${
+              isLowTime ? "text-red-400" : "text-primary"
+            }`}
+            animate={isLowTime ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ duration: 0.5, repeat: isLowTime ? Infinity : 0 }}
+          >
+            {formatTime(timeRemaining)}
+          </motion.div>
 
-      <p className="text-muted-foreground text-xs sm:text-sm mb-4">
-        {isLowTime ? "⚠️ Temps presque écoulé" : "⏱️ Temps restant"}
-      </p>
+          <p className="text-muted-foreground text-xs sm:text-sm mb-4">
+            {isLowTime ? "⚠️ Temps presque écoulé" : "⏱️ Temps restant"}
+          </p>
+        </>
+      )}
 
       {/* Dots animation */}
       <div className="flex items-center justify-center gap-2 mb-4">
