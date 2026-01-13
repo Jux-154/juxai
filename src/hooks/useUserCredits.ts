@@ -24,13 +24,19 @@ export const useUserCredits = (userId: string | undefined) => {
       if (error && error.code !== "PGRST116") throw error;
 
       if (data) {
-        // Vérifier si on doit reset (minuit UTC-4)
-        const today = new Date().toISOString().split("T")[0];
-        if (data.last_reset_date < today) {
+        // Vérifier si on doit reset (minuit UTC-4 = Guadeloupe)
+        // UTC-4 signifie qu'on ajoute 4 heures pour obtenir l'heure locale
+        const now = new Date();
+        const utc4Offset = -4 * 60; // -4 heures en minutes
+        const localOffset = now.getTimezoneOffset();
+        const utc4Time = new Date(now.getTime() + (localOffset + utc4Offset) * 60 * 1000);
+        const todayUTC4 = utc4Time.toISOString().split("T")[0];
+        
+        if (data.last_reset_date < todayUTC4) {
           // Reset les crédits
           const { data: updated, error: updateError } = await supabase
             .from("user_credits")
-            .update({ credits: 5, last_reset_date: today })
+            .update({ credits: 5, last_reset_date: todayUTC4 })
             .eq("user_id", userId)
             .select("credits, last_reset_date")
             .single();

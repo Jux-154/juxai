@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { ViewedHistoryModal } from "@/components/ViewedHistoryModal";
+import { CreationsLightbox } from "@/components/CreationsLightbox";
+import { useUserCredits } from "@/hooks/useUserCredits";
 
 interface Publication {
   id: string;
@@ -20,6 +22,7 @@ interface Publication {
   user_avatar: string | null;
   likes_count: number;
   is_liked: boolean;
+  prompt?: string;
 }
 
 const Creations = () => {
@@ -32,7 +35,10 @@ const Creations = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [allViewed, setAllViewed] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedPub, setSelectedPub] = useState<Publication | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const { credits } = useUserCredits(user?.id);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -113,10 +119,10 @@ const Creations = () => {
       // Enrichir avec les données supplémentaires
       const enrichedPubs: Publication[] = await Promise.all(
         (pubs || []).map(async (pub) => {
-          // Image URL
+          // Image URL et prompt
           const { data: imageData } = await supabase
             .from("user_images")
-            .select("storage_path")
+            .select("storage_path, prompt")
             .eq("id", pub.image_id)
             .single();
 
@@ -148,6 +154,7 @@ const Creations = () => {
             user_avatar: settings?.avatar_url || null,
             likes_count: likesCount || 0,
             is_liked: likedIds.includes(pub.id),
+            prompt: imageData?.prompt,
           };
         })
       );
@@ -192,6 +199,15 @@ const Creations = () => {
             : p
         )
       );
+      
+      // Mettre à jour aussi selectedPub si c'est la même
+      if (selectedPub?.id === pubId) {
+        setSelectedPub(prev => prev ? {
+          ...prev,
+          is_liked: !prev.is_liked,
+          likes_count: prev.is_liked ? prev.likes_count - 1 : prev.likes_count + 1
+        } : null);
+      }
     } catch (error) {
       toast({ title: "Erreur", description: "Impossible de liker", variant: "destructive" });
     }
@@ -215,6 +231,16 @@ const Creations = () => {
     } catch {
       toast({ title: "Erreur", variant: "destructive" });
     }
+  };
+
+  const handleRemix = (prompt: string, addition: string) => {
+    // Construire le prompt final
+    const finalPrompt = addition.trim() 
+      ? `${prompt}, ${addition.trim()}`
+      : prompt;
+    
+    // Naviguer vers l'accueil avec le prompt en state
+    navigate("/", { state: { remixPrompt: finalPrompt, autoGenerate: true } });
   };
 
   // TikTok-style scroll
@@ -269,6 +295,20 @@ const Creations = () => {
         onClose={() => setIsHistoryOpen(false)}
         user={user}
       />
+
+      {/* Lightbox pour Pinterest */}
+      <AnimatePresence>
+        {selectedPub && (
+          <CreationsLightbox
+            publication={selectedPub}
+            onClose={() => setSelectedPub(null)}
+            onLike={handleLike}
+            onShare={handleShare}
+            onRemix={handleRemix}
+            canRemix={credits > 0}
+          />
+        )}
+      </AnimatePresence>
 
       {publications.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center p-8 text-center">
@@ -372,17 +412,20 @@ const Creations = () => {
               {publications.map((pub) => (
                 <motion.div
                   key={pub.id}
-                  className="mb-4 break-inside-avoid"
+                  className="mb-4 break-inside-avoid cursor-pointer"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ scale: 1.02 }}
+                  onClick={() => {
+                    setSelectedPub(pub);
+                    markAsViewed(pub.id);
+                  }}
                 >
                   <div className="relative rounded-xl overflow-hidden bg-card border border-border group">
                     <img
                       src={pub.image_url}
                       alt={pub.title || "Création"}
                       className="w-full object-cover"
-                      onLoad={() => markAsViewed(pub.id)}
                     />
                     
                     {/* Overlay on hover */}
@@ -398,19 +441,9 @@ const Creations = () => {
                           </div>
                           <span className="text-white text-xs">@{pub.user_pseudo}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleLike(pub.id)}
-                            className="p-2 rounded-full bg-white/20 hover:bg-white/30"
-                          >
-                            <Heart className={`h-4 w-4 ${pub.is_liked ? "text-red-500 fill-red-500" : "text-white"}`} />
-                          </button>
-                          <button
-                            onClick={() => handleShare(pub.image_url)}
-                            className="p-2 rounded-full bg-white/20 hover:bg-white/30"
-                          >
-                            <Share2 className="h-4 w-4 text-white" />
-                          </button>
+                        <div className="flex items-center gap-1 text-white text-xs">
+                          <Heart className={`h-3 w-3 ${pub.is_liked ? "fill-red-500 text-red-500" : ""}`} />
+                          {pub.likes_count}
                         </div>
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { SidebarToggle } from "@/components/SidebarToggle";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
@@ -7,6 +7,7 @@ import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
 import { ProfileModal } from "@/components/ProfileModal";
 import { ImageNotification } from "@/components/ImageNotification";
+import { GenerationBlocker } from "@/components/GenerationBlocker";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +42,7 @@ const EDIT_PRESETS = [
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -212,6 +214,24 @@ const Index = () => {
       setIsLoading(false);
     }
   };
+
+  // Gérer le remix depuis Creations
+  useEffect(() => {
+    const state = location.state as { remixPrompt?: string; autoGenerate?: boolean } | null;
+    if (state?.remixPrompt) {
+      setPrompt(state.remixPrompt);
+      // Nettoyer le state pour éviter de re-trigger
+      window.history.replaceState({}, document.title);
+      
+      if (state.autoGenerate) {
+        // Déclencher automatiquement la génération après un court délai
+        setTimeout(() => {
+          const generateBtn = document.querySelector('[data-generate-btn]') as HTMLButtonElement;
+          if (generateBtn) generateBtn.click();
+        }, 500);
+      }
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -708,6 +728,7 @@ const Index = () => {
                       size="icon"
                       disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage) || isLoading}
                       className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
+                      data-generate-btn
                     >
                       <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>
@@ -843,6 +864,16 @@ const Index = () => {
           }
         }}
       />
+
+      {/* Bloquer l'app pendant la génération */}
+      <AnimatePresence>
+        {isLoading && (
+          <GenerationBlocker 
+            isActive={isLoading} 
+            progress={imageGenState?.progress || 0} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
