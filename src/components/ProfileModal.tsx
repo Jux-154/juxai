@@ -39,7 +39,7 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
   const [pseudo, setPseudo] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [totalLikesReceived, setTotalLikesReceived] = useState(0);
   useEffect(() => {
     if (!isOpen || !user) return;
 
@@ -63,6 +63,7 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
           .order("created_at", { ascending: false });
 
         if (pubs) {
+          let totalLikes = 0;
           const enriched = await Promise.all(
             pubs.map(async (pub) => {
               const { data: img } = await supabase
@@ -76,6 +77,9 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
                 .select("*", { count: "exact", head: true })
                 .eq("publication_id", pub.id);
 
+              const likesCount = count || 0;
+              totalLikes += likesCount;
+
               return {
                 id: pub.id,
                 title: pub.title,
@@ -83,12 +87,13 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
                 image_url: img?.storage_path
                   ? supabase.storage.from("images").getPublicUrl(img.storage_path).data.publicUrl
                   : "",
-                likes_count: count || 0,
+                likes_count: likesCount,
                 created_at: pub.created_at,
               };
             })
           );
           setPublishedImages(enriched);
+          setTotalLikesReceived(totalLikes);
         }
 
         // Fetch liked images
@@ -170,9 +175,15 @@ export const ProfileModal = ({ isOpen, onClose, user, credits, onLogout }: Profi
                 <p className="font-medium text-foreground text-lg">@{pseudo || "Anonyme"}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Crédits</p>
-                <p className="text-2xl font-bold text-primary">{credits}/5</p>
+              <div className="text-right space-y-1">
+                <div>
+                  <p className="text-xs text-muted-foreground">Crédits</p>
+                  <p className="text-2xl font-bold text-primary">{credits}/5</p>
+                </div>
+                <div className="flex items-center gap-1 justify-end text-muted-foreground">
+                  <Heart className="h-3 w-3" />
+                  <span className="text-xs">{totalLikesReceived} likes reçus</span>
+                </div>
               </div>
             </div>
           </div>
