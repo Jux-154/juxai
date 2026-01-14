@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { SidebarToggle } from "@/components/SidebarToggle";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
+import { ApiStatus } from "@/components/ApiStatus";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
 import { ProfileModal } from "@/components/ProfileModal";
@@ -13,11 +14,12 @@ import { User, Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { useUserImages, UserImage } from "@/hooks/useUserImages";
 import { useUserCredits } from "@/hooks/useUserCredits";
+import { useApiStatus } from "@/hooks/useApiStatus";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images, User as UserIcon, Coins } from "lucide-react";
+import { X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images, User as UserIcon, Coins, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Presets pour génération (texte seul)
@@ -60,6 +62,7 @@ const Index = () => {
 
   const { images, saveImage, deleteImage, publishImage } = useUserImages(user?.id);
   const { credits, useCredit, refreshCredits } = useUserCredits(user?.id);
+  const { status: apiStatus } = useApiStatus();
 
   const [imageGenState, setImageGenState] = useState<{
     isGenerating: boolean;
@@ -645,6 +648,21 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
+              {/* Alerte si API indisponible */}
+              {apiStatus === "offline" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 glass-card rounded-xl p-3 sm:p-4 bg-red-500/10 border border-red-500/20 flex items-start gap-3"
+                >
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-red-600 text-sm">API indisponible</h3>
+                    <p className="text-red-600/80 text-xs mt-1">L'API est actuellement hors ligne. Vous ne pouvez pas générer d'images pour le moment. Veuillez réessayer dans quelques instants.</p>
+                  </div>
+                </motion.div>
+              )}
+
               <div className="glass-card rounded-2xl p-3 sm:p-4">
                 {/* Image preview pour mode édition */}
                 {activeTab === "edit" && (
@@ -661,6 +679,7 @@ const Index = () => {
                           variant="destructive"
                           className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                           onClick={removeUploadedImage}
+                          disabled={apiStatus === "offline"}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -670,6 +689,7 @@ const Index = () => {
                         variant="outline"
                         className="w-full h-20 sm:h-24 border-dashed gap-2"
                         onClick={() => fileInputRef.current?.click()}
+                        disabled={apiStatus === "offline"}
                       >
                         <ImagePlus className="h-5 w-5" />
                         <span className="text-sm">Ajouter une image</span>
@@ -692,9 +712,9 @@ const Index = () => {
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder={activeTab === "generate" ? "Décrire une nouvelle image..." : "Décrivez les modifications..."}
                     className="flex-1 min-h-[44px] sm:min-h-[48px] max-h-[100px] sm:max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 text-sm sm:text-base text-foreground placeholder:text-muted-foreground/50"
-                    disabled={isLoading}
+                    disabled={isLoading || apiStatus === "offline"}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768) {
+                      if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768 && apiStatus === "online") {
                         e.preventDefault();
                         handleGenerateImage();
                       }
@@ -708,7 +728,7 @@ const Index = () => {
                         variant="ghost"
                         onClick={() => fileInputRef.current?.click()}
                         className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-muted-foreground hover:text-primary"
-                        disabled={isLoading}
+                        disabled={isLoading || apiStatus === "offline"}
                       >
                         <ImagePlus className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
@@ -719,14 +739,14 @@ const Index = () => {
                       variant="ghost"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                       className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl ${isRecording ? "bg-destructive/15 text-destructive" : "text-muted-foreground hover:text-primary"}`}
-                      disabled={isLoading}
+                      disabled={isLoading || apiStatus === "offline"}
                     >
                       {isRecording ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </Button>
                     <Button
                       onClick={handleGenerateImage}
                       size="icon"
-                      disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage) || isLoading}
+                      disabled={!prompt.trim() || (activeTab === "edit" && !uploadedImage) || isLoading || apiStatus === "offline"}
                       className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-90 glow-button"
                       data-generate-btn
                     >
@@ -874,6 +894,9 @@ const Index = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Indicateur de statut API */}
+      <ApiStatus />
     </div>
   );
 };
