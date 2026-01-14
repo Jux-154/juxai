@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useApiStatus = () => {
   const [status, setStatus] = useState<"online" | "offline">("online");
@@ -8,25 +9,30 @@ export const useApiStatus = () => {
     const checkApiStatus = async () => {
       setIsChecking(true);
       try {
-        // Vérifier si le serveur Python de statut est accessible sur le port 5000
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000); // 3 secondes de timeout
+        // Vérifier le heartbeat du serveur dans Supabase
+        const { data, error } = await supabase
+          .from("server_status")
+          .select("last_heartbeat")
+          .eq("id", "jux-ai-server")
+          .maybeSingle();
 
-        const response = await fetch("http://127.0.0.1:5000/status", {
-          method: "GET",
-          signal: controller.signal,
-        });
+        if (error || !data) {
+          setStatus("offline");
+          return;
+        }
 
-        clearTimeout(timeout);
+        // Vérifier si le heartbeat est récent (moins de 15 secondes)
+        const lastHeartbeat = data.last_heartbeat;
+        const currentTime = Date.now() / 1000; // en secondes
+        const timeSinceHeartbeat = currentTime - lastHeartbeat;
 
-        // Si on reçoit une réponse 200, l'API est en ligne
-        if (response.ok) {
+        if (timeSinceHeartbeat < 15) {
           setStatus("online");
         } else {
           setStatus("offline");
         }
       } catch (error: any) {
-        // Si la requête échoue (erreur réseau, timeout, CORS, etc.), l'API est hors ligne
+        // Si la requête échoue, l'API est hors ligne
         setStatus("offline");
       } finally {
         setIsChecking(false);
@@ -36,8 +42,8 @@ export const useApiStatus = () => {
     // Vérification initiale
     checkApiStatus();
 
-    // Vérification toutes les 3 secondes pour un retour plus rapide
-    const interval = setInterval(checkApiStatus, 3000);
+    // Vérification toutes les 2 secondes pour un retour rapide
+    const interval = setInterval(checkApiStatus, 2000);
 
     return () => clearInterval(interval);
   }, []);
