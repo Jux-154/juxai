@@ -40,6 +40,11 @@ const Creations = () => {
   
   const { credits } = useUserCredits(user?.id);
 
+  // Rediriger vers home car la page Creations n'est plus accessible
+  useEffect(() => {
+    navigate("/#/");
+  }, [navigate]);
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();

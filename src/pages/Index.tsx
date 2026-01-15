@@ -551,16 +551,6 @@ const Index = () => {
             <p className="text-sm text-muted-foreground mb-2">Images générées</p>
             <p className="text-2xl font-bold text-primary">{images.length}</p>
           </div>
-
-          {/* Lien vers Créations */}
-          <Button
-            variant="outline"
-            className="w-full gap-2 justify-start"
-            onClick={() => { closeSidebar(); navigate("/creations"); }}
-          >
-            <Images className="h-4 w-4" />
-            Créations
-          </Button>
         </div>
         
         <div className="p-4 border-t border-sidebar-border/30 space-y-3 bg-sidebar-background/80">
