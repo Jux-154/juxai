@@ -500,7 +500,7 @@ const Index = () => {
   const currentPresets = activeTab === "generate" ? GENERATION_PRESETS : EDIT_PRESETS;
 
   return (
-    <div className="flex h-screen bg-background relative overflow-hidden">
+    <div className="flex h-screen bg-transparent relative overflow-hidden">
       <SidebarToggle onClick={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
       <AnimatePresence>
@@ -795,7 +795,7 @@ const Index = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <div className="aspect-square rounded-xl bg-gradient-to-br from-card to-muted border border-border/50 mb-1 sm:mb-2 flex items-center justify-center group-hover:border-primary/50 transition-colors">
+                    <div className="aspect-square rounded-xl bg-card/15 backdrop-blur-xl border border-border/30 mb-1 sm:mb-2 flex items-center justify-center group-hover:border-primary/50 transition-colors group-hover:bg-card/25">
                       <span className="text-xl sm:text-2xl">{preset.emoji}</span>
                     </div>
                     <p className="text-xs sm:text-sm text-foreground/80 group-hover:text-foreground truncate">{preset.name}</p>

@@ -153,13 +153,14 @@ All colors MUST be HSL.
 /* Glass morphism utilities */
 @layer components {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
-    box-shadow: var(--shadow-card);
+    @apply bg-card/20 backdrop-blur-2xl border border-border/30;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   }
   
   .glass-sidebar {
-    @apply backdrop-blur-2xl;
-    background: linear-gradient(180deg, hsl(var(--sidebar-background) / 0.98), hsl(var(--sidebar-background)));
+    @apply backdrop-blur-3xl;
+    background: linear-gradient(180deg, hsl(var(--sidebar-background) / 0.15), hsl(var(--sidebar-background) / 0.1));
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .glow-primary {
@@ -181,8 +182,8 @@ All colors MUST be HSL.
   
   /* Prompt suggestion cards */
   .prompt-card {
-    @apply bg-card/60 backdrop-blur-sm border border-border/40 rounded-xl p-4;
-    @apply hover:bg-card/80 hover:border-primary/30 cursor-pointer;
+    @apply bg-card/15 backdrop-blur-xl border border-border/30 rounded-xl p-4;
+    @apply hover:bg-card/25 hover:border-primary/40 cursor-pointer;
     @apply transition-all duration-200 ease-out;
   }
   
@@ -224,7 +225,18 @@ All colors MUST be HSL.
   }
   
   .message-assistant {
-    @apply bg-card/30 border-y border-border/20;
+    @apply bg-card/15 border-y border-border/20 backdrop-blur-xl;
+  }
+  
+  /* Liquid glass effect for buttons and UI elements */
+  .liquid-glass {
+    @apply bg-card/10 backdrop-blur-2xl border border-border/30;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  }
+  
+  .liquid-glass:hover {
+    @apply bg-card/15 border-border/40;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   }
 }
 

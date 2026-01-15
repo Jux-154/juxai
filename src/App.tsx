@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import ConfirmMail from "./pages/ConfirmMail";
 import Creations from "./pages/Creations";
 import NotFound from "./pages/NotFound";
+import "./rain-background.css";
 
 const queryClient = new QueryClient();
 
@@ -45,16 +46,18 @@ const App = () => {
   }, []);
 
   return (
-    <AnimatePresence mode="wait">
-      {isLoading ? (
-        <motion.div
-          key="loading"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50"
-        >
+    <>
+      <div className="rain-container"></div>
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50"
+          >
           <motion.div
             className="loader"
             initial={{ y: 100, opacity: 0 }}
@@ -163,6 +166,7 @@ const App = () => {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 };
 
