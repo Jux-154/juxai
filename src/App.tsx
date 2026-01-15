@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import ConfirmMail from "./pages/ConfirmMail";
 import Creations from "./pages/Creations";
 import NotFound from "./pages/NotFound";
+import { PatchNotes } from "./components/PatchNotes";
 import "./rain-background.css";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => {
   return (
     <>
       <div className="rain-container"></div>
+      <PatchNotes />
       <AnimatePresence mode="wait">
         {isLoading ? (
           <motion.div
@@ -140,6 +142,16 @@ const App = () => {
           >
             Créé par Jules EVEN
           </motion.p>
+          <motion.div
+            className="absolute bottom-2 sm:bottom-3 md:bottom-4 left-1/2 transform -translate-x-1/2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+          >
+            <div className="text-xs font-semibold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              v1.2
+            </div>
+          </motion.div>
         </motion.div>
       ) : (
         <motion.div
