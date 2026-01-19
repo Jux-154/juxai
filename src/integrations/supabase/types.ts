@@ -252,6 +252,30 @@ export type Database = {
         }
         Relationships: []
       }
+      server_status: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_heartbeat: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          last_heartbeat: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_heartbeat?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string
