@@ -4,6 +4,7 @@ import { SidebarToggle } from "@/components/SidebarToggle";
 import { Settings } from "@/components/Settings";
 import { Updates } from "@/components/Updates";
 import { ApiStatus } from "@/components/ApiStatus";
+import { ApiOfflineAlert } from "@/components/ApiOfflineAlert";
 import { ImageGenerationLoader } from "@/components/ImageGenerationLoader";
 import { ImageLightbox, LightboxImage } from "@/components/ImageLightbox";
 import { ProfileModal } from "@/components/ProfileModal";
@@ -19,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images, User as UserIcon, Coins, AlertCircle } from "lucide-react";
+import { X, Send, Mic, MicOff, ImagePlus, Sparkles, Wand2, Images, User as UserIcon, Coins } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Presets pour génération (texte seul)
@@ -640,17 +641,7 @@ const Index = () => {
             >
               {/* Alerte si API indisponible */}
               {apiStatus === "offline" && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 glass-card rounded-xl p-3 sm:p-4 bg-red-500/10 border border-red-500/20 flex items-start gap-3"
-                >
-                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-red-600 text-sm">API indisponible</h3>
-                    <p className="text-red-600/80 text-xs mt-1">L'API est actuellement hors ligne. Vous ne pouvez pas générer d'images pour le moment. Veuillez réessayer dans quelques instants.</p>
-                  </div>
-                </motion.div>
+                <ApiOfflineAlert />
               )}
 
               <div className="glass-card rounded-2xl p-3 sm:p-4">
