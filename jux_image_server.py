@@ -103,7 +103,7 @@ def update_edit_workflow(workflow: dict, prompt: str, negative: str) -> dict:
     # Mettre à jour le prompt négatif
     workflow["7"]["inputs"]["text"] = negative if negative else "low quality, blurry, distorted"
     
-    # Mettre à jour le nom du fichier image d'entrée
+    # Mettre à jour le nom du fichier image d'entrée (pas le base64!)
     workflow["13"]["inputs"]["image"] = INPUT_IMAGE_FILENAME
     
     return workflow
@@ -301,7 +301,7 @@ def process_request(req: dict, supabase: Client):
 
     try:
         if is_edit_mode:
-            # Mode édition: sauvegarder l'image et utiliser le workflow d'édition
+            # Mode édition: sauvegarder l'image d'abord, puis charger le workflow
             if not save_input_image(input_image):
                 raise Exception("Impossible de sauvegarder l'image d'entrée")
             workflow = load_workflow(WORKFLOW_EDIT)
