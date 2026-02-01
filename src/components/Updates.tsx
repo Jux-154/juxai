@@ -43,12 +43,12 @@ export const Updates = () => {
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold">Version 1.1.3</h3>
+            <h3 className="text-lg font-semibold">Version 1.3</h3>
           </div>
           <div className="space-y-2">
             <h4 className="font-medium">Notes de mise à jour :</h4>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-              <li>Ajout de la personnalisation de Jux</li>
+              <li>Ajout du mode Éditer</li>
             </ul>
           </div>
         </div>

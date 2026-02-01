@@ -11,15 +11,12 @@ interface PatchNote {
 
 const PATCH_NOTES: PatchNote[] = [
   {
-    version: "v1.2",
-    title: "Nouvelle apparence et stabilité",
+    version: "v1.3",
+    title: "Mode Édition d'images",
     changes: [
-      "✨ Nouveau style d'interface avec effet liquid glass",
-      "🌧️ Arrière-plan animé avec effet de pluie",
-      "📊 Ajout du statut en direct de l'API",
-      "🎨 Amélioration visuelle générale de l'expérience utilisateur"
+      "🖼️ Ajout du mode Éditer pour modifier vos images avec l'IA"
     ],
-    date: "15 Janvier 2026"
+    date: "1 Février 2026"
   }
 ];
 
