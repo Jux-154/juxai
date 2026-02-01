@@ -622,13 +622,9 @@ const Index = () => {
                 onClick={() => setActiveTab("edit")}
                 className="flex-1 gap-2 relative"
                 size="sm"
-                disabled
               >
                 <Wand2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Éditer</span>
-                <Badge variant="secondary" className="absolute -top-2 -right-2 text-[9px] px-1.5">
-                  Bientôt
-                </Badge>
               </Button>
             </motion.div>
 
